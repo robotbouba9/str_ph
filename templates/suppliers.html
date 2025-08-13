@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}الموردين - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-truck me-2"></i>
+            إدارة الموردين
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('add_supplier') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            إضافة مورد جديد
+        </a>
+    </div>
+</div>
+
+<!-- فلتر البحث -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-10">
+                <label for="search" class="form-label">البحث</label>
+                <input type="text" class="form-control" id="search" name="search"
+                    value="{{ request.args.get('search', '') }}" placeholder="ابحث بالاسم، الشركة، أو رقم الهاتف...">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    بحث
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- جدول الموردين -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة الموردين ({{ suppliers|length }} مورد)
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if suppliers %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>الشركة</th>
+                        <th>رقم الهاتف</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>العنوان</th>
+                        <th>عدد المنتجات</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers %}
+                    <tr>
+                        <td>
+                            <strong>{{ supplier.name }}</strong>
+                        </td>
+                        <td>
+                            {% if supplier.company %}
+                            {{ supplier.company }}
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if supplier.phone %}
+                            <a href="tel:{{ supplier.phone }}" class="text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>
+                                {{ supplier.phone }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if supplier.email %}
+                            <a href="mailto:{{ supplier.email }}" class="text-decoration-none">
+                                <i class="fas fa-envelope me-1"></i>
+                                {{ supplier.email }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if supplier.address %}
+                            {{ supplier.address[:50] }}{% if supplier.address|length > 50 %}...{% endif %}
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ supplier.products|length }}</span>
+                        </td>
+                        <td>
+                            {{ supplier.created_at.strftime('%Y-%m-%d') }}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_supplier', supplier_id=supplier.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_supplier', supplier_id=supplier.id) }}"
+                                    class="d-inline" onsubmit="return confirmDelete('هل أنت متأكد من حذف هذا المورد؟')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا يوجد موردين</h5>
+            <p class="text-muted">لم يتم العثور على أي موردين تطابق معايير البحث</p>
+            <a href="{{ url_for('add_supplier') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                إضافة أول مورد
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

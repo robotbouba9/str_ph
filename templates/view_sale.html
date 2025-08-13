@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}فاتورة رقم {{ sale.id }} - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-receipt me-2"></i>
+            فاتورة رقم #{{ sale.id }}
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('sales') }}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للمبيعات
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-2"></i>
+            طباعة
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card" id="invoice">
+            <div class="card-header bg-primary text-white">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4 class="mb-0">
+                            <i class="fas fa-mobile-alt me-2"></i>
+                            محل الهواتف
+                        </h4>
+                        <p class="mb-0">فاتورة بيع</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h4 class="mb-0">فاتورة رقم: #{{ sale.id }}</h4>
+                        <p class="mb-0">{{ sale.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <!-- معلومات العميل -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">معلومات العميل:</h6>
+                        {% if sale.customer %}
+                        <p class="mb-1"><strong>الاسم:</strong> {{ sale.customer.name }}</p>
+                        {% if sale.customer.phone %}
+                        <p class="mb-1"><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
+                        {% endif %}
+                        {% if sale.customer.email %}
+                        <p class="mb-1"><strong>البريد:</strong> {{ sale.customer.email }}</p>
+                        {% endif %}
+                        {% if sale.customer.address %}
+                        <p class="mb-1"><strong>العنوان:</strong> {{ sale.customer.address }}</p>
+                        {% endif %}
+                        {% else %}
+                        <p class="text-muted">عميل غير محدد</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6 class="text-primary">تفاصيل الفاتورة:</h6>
+                        <p class="mb-1"><strong>طريقة الدفع:</strong> {{ sale.payment_method }}</p>
+                        <p class="mb-1"><strong>التاريخ:</strong> {{ sale.created_at.strftime('%Y-%m-%d') }}</p>
+                        <p class="mb-1"><strong>الوقت:</strong> {{ sale.created_at.strftime('%H:%M:%S') }}</p>
+                    </div>
+                </div>
+
+                <!-- جدول المنتجات -->
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>المنتج</th>
+                                <th>سعر الوحدة</th>
+                                <th>الكمية</th>
+                                <th>الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sale.sale_items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.product.name }}</strong><br>
+                                    <small class="text-muted">{{ item.product.brand }} {{ item.product.model }}</small>
+                                </td>
+                                <td>
+                                    <span class="format-number">{{ item.unit_price }}</span> جنيه
+                                </td>
+                                <td>
+                                    {{ item.quantity }}
+                                </td>
+                                <td>
+                                    <span class="format-number">{{ item.total_price }}</span> جنيه
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- الإجماليات -->
+                <div class="row">
+                    <div class="col-md-6">
+                        {% if sale.notes %}
+                        <h6 class="text-primary">ملاحظات:</h6>
+                        <p>{{ sale.notes }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <strong>المجموع الفرعي:</strong>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <span class="format-number">{{ sale.total_amount }}</span> جنيه
+                                    </div>
+                                </div>
+
+                                {% if sale.discount > 0 %}
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <strong>الخصم:</strong>
+                                    </div>
+                                    <div class="col-6 text-end text-danger">
+                                        - <span class="format-number">{{ sale.discount }}</span> جنيه
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <hr>
+
+                                <div class="row">
+                                    <div class="col-6">
+                                        <h5 class="text-primary"><strong>الإجمالي:</strong></h5>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <h5 class="text-primary"><strong><span class="format-number">{{
+                                                    sale.final_amount }}</span> جنيه</strong></h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- تذييل الفاتورة -->
+                <div class="text-center mt-4 pt-4 border-top">
+                    <p class="text-muted mb-1">شكراً لتعاملكم معنا</p>
+                    <p class="text-muted mb-0">
+                        <small>تم إنشاء هذه الفاتورة بواسطة برنامج إدارة مخزون محل الهواتف</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+
+        .btn,
+        .card-header .row .col-md-4,
+        nav,
+        .main-content .row:first-child {
+            display: none !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .card-header {
+            background-color: #007bff !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+        }
+
+        body {
+            background: white !important;
+        }
+
+        .table-bordered {
+            border: 1px solid #000 !important;
+        }
+
+        .table-bordered th,
+        .table-bordered td {
+            border: 1px solid #000 !important;
+        }
+    }
+</style>
+{% endblock %}

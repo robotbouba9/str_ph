@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}المبيعات - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-shopping-cart me-2"></i>
+            إدارة المبيعات
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('new_sale') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            فاتورة جديدة
+        </a>
+    </div>
+</div>
+
+<!-- جدول المبيعات -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة المبيعات
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if sales.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>رقم الفاتورة</th>
+                        <th>العميل</th>
+                        <th>المبلغ الإجمالي</th>
+                        <th>الخصم</th>
+                        <th>المبلغ النهائي</th>
+                        <th>طريقة الدفع</th>
+                        <th>التاريخ</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales.items %}
+                    <tr>
+                        <td>
+                            <strong>#{{ sale.id }}</strong>
+                        </td>
+                        <td>
+                            {% if sale.customer %}
+                            {{ sale.customer.name }}
+                            {% else %}
+                            <span class="text-muted">عميل غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="format-number">{{ sale.total_amount }}</span> جنيه
+                        </td>
+                        <td>
+                            {% if sale.discount > 0 %}
+                            <span class="text-danger format-number">{{ sale.discount }}</span> جنيه
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong class="text-success format-number">{{ sale.final_amount }}</strong> جنيه
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ sale.payment_method }}</span>
+                        </td>
+                        <td>
+                            {{ sale.created_at.strftime('%Y-%m-%d') }}<br>
+                            <small class="text-muted">{{ sale.created_at.strftime('%H:%M') }}</small>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('view_sale', sale_id=sale.id) }}" class="btn btn-sm btn-outline-primary"
+                                title="عرض">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- التنقل بين الصفحات -->
+        {% if sales.pages > 1 %}
+        <nav aria-label="تنقل الصفحات">
+            <ul class="pagination justify-content-center">
+                {% if sales.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('sales', page=sales.prev_num) }}">السابق</a>
+                </li>
+                {% endif %}
+
+                {% for page_num in sales.iter_pages() %}
+                {% if page_num %}
+                {% if page_num != sales.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('sales', page=page_num) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if sales.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('sales', page=sales.next_num) }}">التالي</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد مبيعات</h5>
+            <p class="text-muted">لم يتم تسجيل أي مبيعات بعد</p>
+            <a href="{{ url_for('new_sale') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                إنشاء أول فاتورة
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

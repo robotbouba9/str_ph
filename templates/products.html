@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}المنتجات - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-mobile-alt me-2"></i>
+            إدارة المنتجات
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            إضافة منتج جديد
+        </a>
+    </div>
+</div>
+
+<!-- فلاتر البحث -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-6">
+                <label for="search" class="form-label">البحث</label>
+                <input type="text" class="form-control" id="search" name="search"
+                    value="{{ request.args.get('search', '') }}" placeholder="ابحث بالاسم، الموديل، أو الباركود...">
+            </div>
+            <div class="col-md-4">
+                <label for="brand" class="form-label">الماركة</label>
+                <select class="form-select" id="brand" name="brand">
+                    <option value="">جميع الماركات</option>
+                    {% for brand_name in brands %}
+                    <option value="{{ brand_name }}" {% if request.args.get('brand')==brand_name %}selected{% endif %}>
+                        {{ brand_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    بحث
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- جدول المنتجات -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة المنتجات ({{ products|length }} منتج)
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if products %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>الاسم</th>
+                        <th>الماركة</th>
+                        <th>الموديل</th>
+                        <th>اللون</th>
+                        <th>التخزين</th>
+                        <th>سعر الشراء</th>
+                        <th>سعر البيع</th>
+                        <th>الكمية</th>
+                        <th>المورد</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            <strong>{{ product.name }}</strong>
+                            {% if product.barcode %}
+                            <br><small class="text-muted">{{ product.barcode }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ product.brand }}</td>
+                        <td>{{ product.model }}</td>
+                        <td>{{ product.color or '-' }}</td>
+                        <td>{{ product.storage or '-' }}</td>
+                        <td>
+                            <span class="format-number">{{ product.price_buy }}</span> جنيه
+                        </td>
+                        <td>
+                            <span class="format-number">{{ product.price_sell }}</span> جنيه
+                        </td>
+                        <td>
+                            {% if product.quantity <= product.min_quantity %} <span class="badge bg-danger">{{
+                                product.quantity }}</span>
+                                <small class="text-danger d-block">منخفض المخزون</small>
+                                {% elif product.quantity <= product.min_quantity * 2 %} <span
+                                    class="badge bg-warning text-dark">{{ product.quantity }}</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ product.quantity }}</span>
+                                    {% endif %}
+                        </td>
+                        <td>
+                            {% if product.supplier %}
+                            {{ product.supplier.name }}
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_product', product_id=product.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}"
+                                    class="d-inline" onsubmit="return confirmDelete('هل أنت متأكد من حذف هذا المنتج؟')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-mobile-alt fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد منتجات</h5>
+            <p class="text-muted">لم يتم العثور على أي منتجات تطابق معايير البحث</p>
+            <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                إضافة أول منتج
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+{% if products %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ products|length }}</h5>
+                <p class="card-text">إجمالي المنتجات</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success" id="available-count">0</h5>
+                <p class="card-text">متوفر بالمخزون</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning" id="low-stock-count">0</h5>
+                <p class="card-text">منخفض المخزون</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info format-number">
+                    {{ products|sum(attribute='quantity') }}
+                </h5>
+                <p class="card-text">إجمالي الكمية</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // حساب الإحصائيات
+    document.addEventListener('DOMContentLoaded', function () {
+        let availableCount = 0;
+        let lowStockCount = 0;
+
+        // حساب الإحصائيات من الجدول
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const quantityCell = row.querySelector('td:nth-child(8)');
+            if (quantityCell) {
+                const badge = quantityCell.querySelector('.badge');
+                if (badge) {
+                    if (badge.classList.contains('bg-danger')) {
+                        lowStockCount++;
+                    } else if (badge.classList.contains('bg-success')) {
+                        availableCount++;
+                    }
+                }
+            }
+        });
+
+        // تحديث العدادات
+        const availableElement = document.getElementById('available-count');
+        const lowStockElement = document.getElementById('low-stock-count');
+
+        if (availableElement) availableElement.textContent = availableCount;
+        if (lowStockElement) lowStockElement.textContent = lowStockCount;
+    });
+
+    // تطبيق البحث التلقائي
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            // يمكن إضافة البحث التلقائي هنا
+        });
+    }
+
+    // تصدير البيانات
+    function exportData() {
+        // يمكن إضافة وظيفة التصدير هنا
+        alert('سيتم إضافة وظيفة التصدير قريباً');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة منتج جديد - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-plus-circle me-2"></i>
+            إضافة منتج جديد
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للمنتجات
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-mobile-alt me-2"></i>
+                    بيانات المنتج
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="productForm">
+                    <div class="row">
+                        <!-- المعلومات الأساسية -->
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">اسم المنتج <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                placeholder="مثال: iPhone 15 Pro Max">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="brand" class="form-label">الماركة <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="brand" name="brand" required
+                                placeholder="مثال: Apple" list="brandsList">
+                            <datalist id="brandsList">
+                                <option value="Apple">
+                                <option value="Samsung">
+                                <option value="Xiaomi">
+                                <option value="Huawei">
+                                <option value="Oppo">
+                                <option value="Vivo">
+                                <option value="OnePlus">
+                                <option value="Realme">
+                                <option value="Nokia">
+                                <option value="Sony">
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="model" class="form-label">الموديل <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="model" name="model" required
+                                placeholder="مثال: iPhone 15 Pro Max">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="color" class="form-label">اللون</label>
+                            <input type="text" class="form-control" id="color" name="color"
+                                placeholder="مثال: أزرق تيتانيوم">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="storage" class="form-label">مساحة التخزين</label>
+                            <select class="form-select" id="storage" name="storage">
+                                <option value="">اختر مساحة التخزين</option>
+                                <option value="64GB">64GB</option>
+                                <option value="128GB">128GB</option>
+                                <option value="256GB">256GB</option>
+                                <option value="512GB">512GB</option>
+                                <option value="1TB">1TB</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="barcode" class="form-label">الباركود</label>
+                            <input type="text" class="form-control" id="barcode" name="barcode"
+                                placeholder="رقم الباركود">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <!-- الأسعار والكميات -->
+                        <div class="col-md-6 mb-3">
+                            <label for="price_buy" class="form-label">سعر الشراء (جنيه) <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="price_buy" name="price_buy" step="0.01"
+                                min="0" required placeholder="0.00">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="price_sell" class="form-label">سعر البيع (جنيه) <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="price_sell" name="price_sell" step="0.01"
+                                min="0" required placeholder="0.00">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="quantity" class="form-label">الكمية المتوفرة <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" min="0" required
+                                placeholder="0">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="min_quantity" class="form-label">الحد الأدنى للكمية</label>
+                            <input type="number" class="form-control" id="min_quantity" name="min_quantity" min="0"
+                                value="5" placeholder="5">
+                            <div class="form-text">سيتم تنبيهك عند وصول الكمية لهذا الحد</div>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label for="supplier_id" class="form-label">المورد</label>
+                            <select class="form-select" id="supplier_id" name="supplier_id">
+                                <option value="">اختر المورد</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-2"></i>
+                                حفظ المنتج
+                            </button>
+                            <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- معاينة المنتج -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    معاينة المنتج
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="productPreview">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-mobile-alt fa-3x mb-3"></i>
+                        <p>املأ البيانات لمعاينة المنتج</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نصائح -->
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    نصائح مفيدة
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        تأكد من دقة أسعار الشراء والبيع
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        استخدم أسماء واضحة ومفهومة
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        حدد الحد الأدنى للكمية بعناية
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        اربط المنتج بالمورد المناسب
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // معاينة المنتج في الوقت الفعلي
+    function updatePreview() {
+        const name = document.getElementById('name').value || 'اسم المنتج';
+        const brand = document.getElementById('brand').value || 'الماركة';
+        const model = document.getElementById('model').value || 'الموديل';
+        const color = document.getElementById('color').value;
+        const storage = document.getElementById('storage').value;
+        const priceBuy = document.getElementById('price_buy').value;
+        const priceSell = document.getElementById('price_sell').value;
+        const quantity = document.getElementById('quantity').value;
+
+        let profit = 0;
+        let profitPercent = 0;
+        if (priceBuy && priceSell) {
+            profit = parseFloat(priceSell) - parseFloat(priceBuy);
+            profitPercent = ((profit / parseFloat(priceBuy)) * 100).toFixed(1);
+        }
+
+        const previewHtml = `
+            <div class="text-center">
+                <div class="bg-light p-3 rounded mb-3">
+                    <i class="fas fa-mobile-alt fa-2x text-primary mb-2"></i>
+                    <h6 class="fw-bold">${name}</h6>
+                    <p class="text-muted mb-1">${brand} ${model}</p>
+                    ${color ? `<small class="text-muted">اللون: ${color}</small><br>` : ''}
+                    ${storage ? `<small class="text-muted">التخزين: ${storage}</small>` : ''}
+                </div>
+                
+                ${priceSell ? `
+                <div class="row text-center mb-2">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-0">${parseFloat(priceSell).toLocaleString('ar-EG')} جنيه</h5>
+                        <small class="text-muted">سعر البيع</small>
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${profit > 0 ? `
+                <div class="alert alert-success py-2 mb-2">
+                    <small>الربح: ${profit.toLocaleString('ar-EG')} جنيه (${profitPercent}%)</small>
+                </div>
+                ` : ''}
+                
+                ${quantity ? `
+                <div class="badge ${parseInt(quantity) > 10 ? 'bg-success' : parseInt(quantity) > 5 ? 'bg-warning' : 'bg-danger'}">
+                    الكمية: ${quantity}
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        document.getElementById('productPreview').innerHTML = previewHtml;
+    }
+
+    // ربط الأحداث
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = ['name', 'brand', 'model', 'color', 'storage', 'price_buy', 'price_sell', 'quantity'];
+        inputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            }
+        });
+
+        updatePreview();
+    });
+
+    // حساب سعر البيع المقترح
+    document.getElementById('price_buy').addEventListener('input', function () {
+        const priceBuy = parseFloat(this.value);
+        const priceSellInput = document.getElementById('price_sell');
+
+        if (priceBuy && !priceSellInput.value) {
+            // اقتراح سعر بيع بربح 30%
+            const suggestedPrice = (priceBuy * 1.3).toFixed(2);
+            priceSellInput.value = suggestedPrice;
+            updatePreview();
+        }
+    });
+
+    // التحقق من صحة النموذج
+    document.getElementById('productForm').addEventListener('submit', function (e) {
+        const priceBuy = parseFloat(document.getElementById('price_buy').value);
+        const priceSell = parseFloat(document.getElementById('price_sell').value);
+
+        if (priceSell <= priceBuy) {
+            e.preventDefault();
+            alert('سعر البيع يجب أن يكون أكبر من سعر الشراء');
+            return false;
+        }
+
+        return true;
+    });
+</script>
+{% endblock %}

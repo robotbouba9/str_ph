@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}التقارير - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-chart-bar me-2"></i>
+            التقارير والإحصائيات
+        </h1>
+    </div>
+</div>
+
+<!-- إحصائيات المبيعات الشهرية -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    مبيعات هذا الشهر
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-6">
+                        <h3 class="text-primary format-number">{{ monthly_revenue }}</h3>
+                        <p class="text-muted mb-0">إجمالي المبيعات (جنيه)</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-success">{{ monthly_sales_count }}</h3>
+                        <p class="text-muted mb-0">عدد الفواتير</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    تنبيهات المخزون
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if low_stock %}
+                <div class="alert alert-warning">
+                    <strong>{{ low_stock|length }}</strong> منتج منخفض المخزون
+                </div>
+                <div class="list-group">
+                    {% for product in low_stock[:5] %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ product.name }}</strong><br>
+                            <small class="text-muted">{{ product.brand }}</small>
+                        </div>
+                        <span class="badge bg-danger">{{ product.quantity }}</span>
+                    </div>
+                    {% endfor %}
+                    {% if low_stock|length > 5 %}
+                    <div class="list-group-item text-center">
+                        <small class="text-muted">و {{ low_stock|length - 5 }} منتج آخر...</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    جميع المنتجات متوفرة بكميات كافية
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- المنتجات الأكثر مبيعاً -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-trophy me-2"></i>
+                    المنتجات الأكثر مبيعاً
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الترتيب</th>
+                                <th>اسم المنتج</th>
+                                <th>إجمالي المبيعات</th>
+                                <th>النسبة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set total_sold = top_products|sum(attribute=1) %}
+                            {% for product_name, sold_quantity in top_products %}
+                            <tr>
+                                <td>
+                                    {% if loop.index == 1 %}
+                                    <i class="fas fa-trophy text-warning"></i>
+                                    {% elif loop.index == 2 %}
+                                    <i class="fas fa-medal text-secondary"></i>
+                                    {% elif loop.index == 3 %}
+                                    <i class="fas fa-award text-warning"></i>
+                                    {% else %}
+                                    {{ loop.index }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ product_name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ sold_quantity }} قطعة</span>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        {% set percentage = (sold_quantity / total_sold * 100) if total_sold > 0 else 0
+                                        %}
+                                        <div class="progress-bar" role="progressbar" style="width: {{ percentage }}%">
+                                            {{ "%.1f"|format(percentage) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">لا توجد بيانات مبيعات</h5>
+                    <p class="text-muted">لم يتم تسجيل أي مبيعات بعد</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تقارير إضافية -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-download me-2"></i>
+                    تصدير التقارير
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="exportSalesReport()">
+                        <i class="fas fa-file-excel me-2"></i>
+                        تقرير المبيعات
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportInventoryReport()">
+                        <i class="fas fa-file-csv me-2"></i>
+                        تقرير المخزون
+                    </button>
+                    <button class="btn btn-outline-info" onclick="exportCustomersReport()">
+                        <i class="fas fa-file-pdf me-2"></i>
+                        تقرير العملاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    فلاتر التقارير
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="reportFilters">
+                    <div class="mb-3">
+                        <label class="form-label">من تاريخ</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">إلى تاريخ</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-search me-2"></i>
+                        تطبيق الفلاتر
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    إعدادات التقارير
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="includeCustomers" checked>
+                    <label class="form-check-label" for="includeCustomers">
+                        تضمين بيانات العملاء
+                    </label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="includeSuppliers" checked>
+                    <label class="form-check-label" for="includeSuppliers">
+                        تضمين بيانات الموردين
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="includeCharts">
+                    <label class="form-check-label" for="includeCharts">
+                        تضمين الرسوم البيانية
+                    </label>
+                </div>
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="resetSettings()">
+                    <i class="fas fa-undo me-2"></i>
+                    إعادة تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // تصدير تقرير المبيعات
+    function exportSalesReport() {
+        alert('سيتم إضافة وظيفة تصدير تقرير المبيعات قريباً');
+        // يمكن إضافة كود تصدير Excel/CSV هنا
+    }
+
+    // تصدير تقرير المخزون
+    function exportInventoryReport() {
+        alert('سيتم إضافة وظيفة تصدير تقرير المخزون قريباً');
+        // يمكن إضافة كود تصدير CSV هنا
+    }
+
+    // تصدير تقرير العملاء
+    function exportCustomersReport() {
+        alert('سيتم إضافة وظيفة تصدير تقرير العملاء قريباً');
+        // يمكن إضافة كود تصدير PDF هنا
+    }
+
+    // تطبيق الفلاتر
+    function applyFilters() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        if (startDate && endDate) {
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+                return;
+            }
+        }
+
+        // إعادة تحميل الصفحة مع الفلاتر
+        let url = new URL(window.location);
+        if (startDate) url.searchParams.set('start_date', startDate);
+        if (endDate) url.searchParams.set('end_date', endDate);
+
+        window.location.href = url.toString();
+    }
+
+    // إعادة تعيين الإعدادات
+    function resetSettings() {
+        document.getElementById('includeCustomers').checked = true;
+        document.getElementById('includeSuppliers').checked = true;
+        document.getElementById('includeCharts').checked = false;
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+    }
+
+    // تعيين التواريخ الافتراضية
+    document.addEventListener('DOMContentLoaded', function () {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        document.getElementById('startDate').value = firstDayOfMonth.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    });
+</script>
+{% endblock %}

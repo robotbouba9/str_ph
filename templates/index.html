@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2 mb-4">
+            <i class="fas fa-home me-2"></i>
+            لوحة التحكم الرئيسية
+        </h1>
+    </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stats-card">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-number">{{ stats.total_products }}</div>
+                    <div class="stats-label">إجمالي المنتجات</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-mobile-alt fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-number">{{ stats.total_customers }}</div>
+                    <div class="stats-label">إجمالي العملاء</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-users fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-number">{{ stats.total_suppliers }}</div>
+                    <div class="stats-label">إجمالي الموردين</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-truck fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-number">{{ stats.low_stock_count }}</div>
+                    <div class="stats-label">منتجات منخفضة المخزون</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مبيعات اليوم -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    مبيعات اليوم
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h3 class="text-primary format-number">{{ stats.today_revenue }}</h3>
+                        <p class="text-muted mb-0">إجمالي المبيعات (جنيه)</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-success">{{ stats.today_sales_count }}</h3>
+                        <p class="text-muted mb-0">عدد الفواتير</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tachometer-alt me-2"></i>
+                    إجراءات سريعة
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_sale') }}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        إنشاء فاتورة جديدة
+                    </a>
+                    <a href="{{ url_for('add_product') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-mobile-alt me-2"></i>
+                        إضافة منتج جديد
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- المنتجات منخفضة المخزون -->
+{% if low_stock_products %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    تنبيه: منتجات منخفضة المخزون
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>اسم المنتج</th>
+                                <th>الماركة</th>
+                                <th>الكمية المتوفرة</th>
+                                <th>الحد الأدنى</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in low_stock_products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.brand }}</td>
+                                <td>
+                                    <span class="badge bg-danger">{{ product.quantity }}</span>
+                                </td>
+                                <td>{{ product.min_quantity }}</td>
+                                <td>
+                                    <a href="{{ url_for('edit_product', product_id=product.id) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                        تحديث المخزون
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- أحدث المبيعات -->
+{% if recent_sales %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    أحدث المبيعات
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>العميل</th>
+                                <th>المبلغ الإجمالي</th>
+                                <th>طريقة الدفع</th>
+                                <th>التاريخ</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in recent_sales %}
+                            <tr>
+                                <td>
+                                    <strong>#{{ sale.id }}</strong>
+                                </td>
+                                <td>
+                                    {% if sale.customer %}
+                                    {{ sale.customer.name }}
+                                    {% else %}
+                                    <span class="text-muted">عميل غير محدد</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="format-number">{{ sale.final_amount }}</span> جنيه
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ sale.payment_method }}</span>
+                                </td>
+                                <td>
+                                    {{ sale.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('view_sale', sale_id=sale.id) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                        عرض
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('sales') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i>
+                        عرض جميع المبيعات
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // تحديث الإحصائيات كل 30 ثانية
+    setInterval(function () {
+        // يمكن إضافة AJAX لتحديث الإحصائيات دون إعادة تحميل الصفحة
+        // location.reload();
+    }, 30000);
+</script>
+{% endblock %}

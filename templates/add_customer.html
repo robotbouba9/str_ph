@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة عميل جديد - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-user-plus me-2"></i>
+            إضافة عميل جديد
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للعملاء
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user me-2"></i>
+                    بيانات العميل
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="customerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">اسم العميل <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                placeholder="الاسم الكامل للعميل">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">رقم الهاتف</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="01xxxxxxxxx">
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label for="email" class="form-label">البريد الإلكتروني</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                placeholder="example@email.com">
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label for="address" class="form-label">العنوان</label>
+                            <textarea class="form-control" id="address" name="address" rows="3"
+                                placeholder="العنوان الكامل للعميل..."></textarea>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-2"></i>
+                                حفظ العميل
+                            </button>
+                            <a href="{{ url_for('customers') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- معاينة العميل -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    معاينة العميل
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="customerPreview">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-user fa-3x mb-3"></i>
+                        <p>املأ البيانات لمعاينة العميل</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نصائح -->
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    نصائح مفيدة
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        الاسم هو الحقل الوحيد المطلوب
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        رقم الهاتف مفيد للتواصل السريع
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        البريد الإلكتروني للإشعارات
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        العنوان مفيد للتوصيل
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // معاينة العميل في الوقت الفعلي
+    function updatePreview() {
+        const name = document.getElementById('name').value || 'اسم العميل';
+        const phone = document.getElementById('phone').value;
+        const email = document.getElementById('email').value;
+        const address = document.getElementById('address').value;
+
+        const previewHtml = `
+            <div class="text-center">
+                <div class="bg-light p-3 rounded mb-3">
+                    <i class="fas fa-user fa-2x text-primary mb-2"></i>
+                    <h6 class="fw-bold">${name}</h6>
+                </div>
+                
+                <div class="text-start">
+                    ${phone ? `
+                    <div class="mb-2">
+                        <i class="fas fa-phone text-success me-2"></i>
+                        <small>${phone}</small>
+                    </div>
+                    ` : ''}
+                    
+                    ${email ? `
+                    <div class="mb-2">
+                        <i class="fas fa-envelope text-info me-2"></i>
+                        <small>${email}</small>
+                    </div>
+                    ` : ''}
+                    
+                    ${address ? `
+                    <div class="mb-2">
+                        <i class="fas fa-map-marker-alt text-warning me-2"></i>
+                        <small>${address.substring(0, 50)}${address.length > 50 ? '...' : ''}</small>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        document.getElementById('customerPreview').innerHTML = previewHtml;
+    }
+
+    // ربط الأحداث
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = ['name', 'phone', 'email', 'address'];
+        inputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', updatePreview);
+            }
+        });
+
+        updatePreview();
+    });
+
+    // تنسيق رقم الهاتف
+    document.getElementById('phone').addEventListener('input', function () {
+        let value = this.value.replace(/\D/g, ''); // إزالة كل شيء عدا الأرقام
+
+        // التحقق من أن الرقم يبدأ بـ 01
+        if (value.length > 0 && !value.startsWith('01')) {
+            if (value.startsWith('1')) {
+                value = '0' + value;
+            }
+        }
+
+        // تحديد الطول الأقصى
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+
+        this.value = value;
+        updatePreview();
+    });
+
+    // التحقق من صحة البريد الإلكتروني
+    document.getElementById('email').addEventListener('blur', function () {
+        const email = this.value;
+        if (email && !isValidEmail(email)) {
+            this.setCustomValidity('يرجى إدخال بريد إلكتروني صحيح');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // التحقق من صحة النموذج
+    document.getElementById('customerForm').addEventListener('submit', function (e) {
+        const name = document.getElementById('name').value.trim();
+
+        if (!name) {
+            e.preventDefault();
+            alert('يرجى إدخال اسم العميل');
+            document.getElementById('name').focus();
+            return false;
+        }
+
+        const email = document.getElementById('email').value;
+        if (email && !isValidEmail(email)) {
+            e.preventDefault();
+            alert('يرجى إدخال بريد إلكتروني صحيح');
+            document.getElementById('email').focus();
+            return false;
+        }
+
+        return true;
+    });
+</script>
+{% endblock %}
