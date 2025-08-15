@@ -21,13 +21,30 @@
 <!-- فلاتر البحث -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-6">
-                <label for="search" class="form-label">البحث</label>
-                <input type="text" class="form-control" id="search" name="search"
-                    value="{{ request.args.get('search', '') }}" placeholder="ابحث بالاسم، الموديل، أو الباركود...">
-            </div>
+        <form method="GET" class="row g-3" id="searchForm">
             <div class="col-md-4">
+                <label for="search" class="form-label">البحث السريع</label>
+                <div class="search-container position-relative">
+                    <input type="text" class="form-control" id="search" name="search"
+                        value="{{ request.args.get('search', '') }}"
+                        placeholder="ابحث بالاسم، الموديل، الماركة، أو الوصف..." autocomplete="off">
+                    <div id="searchSuggestions" class="position-absolute bg-white w-100 d-none"
+                        style="z-index: 1000; top: 100%;"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="category" class="form-label">الفئة</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">جميع الفئات</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.args.get('category')==category.id|string
+                        %}selected{% endif %}>
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label for="brand" class="form-label">الماركة</label>
                 <select class="form-select" id="brand" name="brand">
                     <option value="">جميع الماركات</option>
@@ -39,7 +56,10 @@
                 </select>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-outline-primary w-100">
+                <button type="button" class="btn btn-outline-secondary me-2" onclick="clearFilters()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button type="submit" class="btn btn-primary">
                     <i class="fas fa-search me-2"></i>
                     بحث
                 </button>
@@ -63,10 +83,11 @@
                 <thead>
                     <tr>
                         <th>الاسم</th>
+                        <th>الفئة</th>
                         <th>الماركة</th>
                         <th>الموديل</th>
                         <th>اللون</th>
-                        <th>التخزين</th>
+                        <th>الوصف</th>
                         <th>سعر الشراء</th>
                         <th>سعر البيع</th>
                         <th>الكمية</th>
@@ -83,15 +104,31 @@
                             <br><small class="text-muted">{{ product.barcode }}</small>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if product.category %}
+                            <span class="badge bg-info">{{ product.category.name }}</span>
+                            {% else %}
+                            <span class="text-muted">غير محدد</span>
+                            {% endif %}
+                        </td>
                         <td>{{ product.brand }}</td>
                         <td>{{ product.model }}</td>
                         <td>{{ product.color or '-' }}</td>
-                        <td>{{ product.storage or '-' }}</td>
                         <td>
-                            <span class="format-number">{{ product.price_buy }}</span> جنيه
+                            {% if product.description %}
+                            <span class="text-truncate d-inline-block" style="max-width: 200px;"
+                                title="{{ product.description }}">
+                                {{ product.description }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
                         </td>
                         <td>
-                            <span class="format-number">{{ product.price_sell }}</span> جنيه
+                            <span class="format-number">{{ "{:,.0f}".format(product.price_buy) }}</span> جنيه
+                        </td>
+                        <td>
+                            <span class="format-number">{{ "{:,.0f}".format(product.price_sell) }}</span> جنيه
                         </td>
                         <td>
                             {% if product.quantity <= product.min_quantity %} <span class="badge bg-danger">{{
@@ -149,7 +186,7 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title text-primary">{{ products|length }}</h5>
+                <h5 class="card-title text-primary">{{ "{:,}".format(products|length) }}</h5>
                 <p class="card-text">إجمالي المنتجات</p>
             </div>
         </div>
@@ -173,8 +210,8 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title text-info format-number">
-                    {{ products|sum(attribute='quantity') }}
+                <h5 class="card-title text-info">
+                    {{ "{:,}".format(products|sum(attribute='quantity')) }}
                 </h5>
                 <p class="card-text">إجمالي الكمية</p>
             </div>
@@ -195,7 +232,7 @@
         // حساب الإحصائيات من الجدول
         const rows = document.querySelectorAll('tbody tr');
         rows.forEach(row => {
-            const quantityCell = row.querySelector('td:nth-child(8)');
+            const quantityCell = row.querySelector('td:nth-child(9)'); // تحديث الرقم بعد إضافة عمود الفئة
             if (quantityCell) {
                 const badge = quantityCell.querySelector('.badge');
                 if (badge) {
@@ -212,22 +249,311 @@
         const availableElement = document.getElementById('available-count');
         const lowStockElement = document.getElementById('low-stock-count');
 
-        if (availableElement) availableElement.textContent = availableCount;
-        if (lowStockElement) lowStockElement.textContent = lowStockCount;
+        if (availableElement) availableElement.textContent = availableCount.toLocaleString();
+        if (lowStockElement) lowStockElement.textContent = lowStockCount.toLocaleString();
     });
 
-    // تطبيق البحث التلقائي
+    // البحث التلقائي المحسن
     const searchInput = document.getElementById('search');
+    const searchForm = document.getElementById('searchForm');
+    const categorySelect = document.getElementById('category');
+    const brandSelect = document.getElementById('brand');
+    let searchTimeout;
+
     if (searchInput) {
+        // البحث التلقائي عند الكتابة
         searchInput.addEventListener('input', function () {
-            // يمكن إضافة البحث التلقائي هنا
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length >= 2 || this.value.length === 0) {
+                    searchForm.submit();
+                }
+            }, 500); // انتظار 500ms بعد التوقف عن الكتابة
+        });
+
+        // البحث الفوري عند تغيير الفلاتر
+        categorySelect.addEventListener('change', () => searchForm.submit());
+        brandSelect.addEventListener('change', () => searchForm.submit());
+    }
+
+    // مسح الفلاتر
+    function clearFilters() {
+        searchInput.value = '';
+        categorySelect.value = '';
+        brandSelect.value = '';
+        searchForm.submit();
+    }
+
+    // تأكيد الحذف
+    function confirmDelete(message) {
+        return confirm(message);
+    }
+
+    // البحث التلقائي المحسن
+    let searchTimeout;
+    let searchCache = new Map();
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('search');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        const searchForm = document.getElementById('searchForm');
+
+        if (searchInput && searchSuggestions) {
+            // البحث التلقائي أثناء الكتابة
+            searchInput.addEventListener('input', function () {
+                const query = this.value.trim();
+
+                // إلغاء البحث السابق
+                clearTimeout(searchTimeout);
+
+                if (query.length < 2) {
+                    hideSuggestions();
+                    return;
+                }
+
+                // تأخير البحث لتحسين الأداء
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            });
+
+            // إخفاء الاقتراحات عند النقر خارجها
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                    hideSuggestions();
+                }
+            });
+
+            // التنقل بالكيبورد
+            searchInput.addEventListener('keydown', function (e) {
+                const suggestions = searchSuggestions.querySelectorAll('.suggestion-item');
+                const activeSuggestion = searchSuggestions.querySelector('.suggestion-item.active');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (activeSuggestion) {
+                        activeSuggestion.classList.remove('active');
+                        const next = activeSuggestion.nextElementSibling;
+                        if (next) {
+                            next.classList.add('active');
+                        } else {
+                            suggestions[0]?.classList.add('active');
+                        }
+                    } else {
+                        suggestions[0]?.classList.add('active');
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (activeSuggestion) {
+                        activeSuggestion.classList.remove('active');
+                        const prev = activeSuggestion.previousElementSibling;
+                        if (prev) {
+                            prev.classList.add('active');
+                        } else {
+                            suggestions[suggestions.length - 1]?.classList.add('active');
+                        }
+                    } else {
+                        suggestions[suggestions.length - 1]?.classList.add('active');
+                    }
+                } else if (e.key === 'Enter') {
+                    if (activeSuggestion) {
+                        e.preventDefault();
+                        activeSuggestion.click();
+                    }
+                } else if (e.key === 'Escape') {
+                    hideSuggestions();
+                }
+            });
+        }
+
+        // تحسين عرض الأرقام
+        const numberElements = document.querySelectorAll('.format-number');
+        numberElements.forEach(element => {
+            const number = parseFloat(element.textContent.replace(/[^\d.-]/g, ''));
+            if (!isNaN(number)) {
+                element.textContent = number.toLocaleString('en-US');
+            }
+        });
+    });
+
+    async function performSearch(query) {
+        // التحقق من الكاش
+        if (searchCache.has(query)) {
+            displaySuggestions(searchCache.get(query), query);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+                const products = await response.json();
+                searchCache.set(query, products);
+                displaySuggestions(products, query);
+            }
+        } catch (error) {
+            console.error('خطأ في البحث:', error);
+        }
+    }
+
+    function displaySuggestions(products, query) {
+        const searchSuggestions = document.getElementById('searchSuggestions');
+
+        if (products.length === 0) {
+            searchSuggestions.innerHTML = '<div class="p-3 text-muted text-center">لا توجد نتائج</div>';
+            searchSuggestions.classList.remove('d-none');
+            return;
+        }
+
+        const suggestionsHtml = products.map(product => `
+            <div class="suggestion-item p-2 border-bottom" data-product-id="${product.id}" style="cursor: pointer;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-box text-primary"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${highlightMatch(product.name, query)}</div>
+                        <small class="text-muted">
+                            ${product.brand} ${product.model}
+                            ${product.category_name ? `• ${product.category_name}` : ''}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold text-primary">${parseFloat(product.price_sell).toLocaleString('en-US')} جنيه</div>
+                        <small class="text-muted">الكمية: ${product.quantity}</small>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        searchSuggestions.innerHTML = suggestionsHtml;
+        searchSuggestions.classList.remove('d-none');
+
+        // إضافة أحداث النقر
+        searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function () {
+                const productName = this.querySelector('.fw-bold').textContent;
+                document.getElementById('search').value = productName;
+                hideSuggestions();
+                document.getElementById('searchForm').submit();
+            });
+
+            item.addEventListener('mouseenter', function () {
+                searchSuggestions.querySelectorAll('.suggestion-item').forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+            });
         });
     }
 
-    // تصدير البيانات
-    function exportData() {
-        // يمكن إضافة وظيفة التصدير هنا
-        alert('سيتم إضافة وظيفة التصدير قريباً');
+    function highlightMatch(text, query) {
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
     }
+
+    function hideSuggestions() {
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        if (searchSuggestions) {
+            searchSuggestions.classList.add('d-none');
+        }
+    }
+
+    // إضافة تأثيرات بصرية للجدول
+    document.addEventListener('DOMContentLoaded', function () {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function () {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            row.addEventListener('mouseleave', function () {
+                this.style.backgroundColor = '';
+            });
+        });
+    });
 </script>
+
+<style>
+    /* تحسينات CSS إضافية */
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .badge {
+        font-size: 0.875em;
+    }
+
+    .btn-group .btn {
+        margin: 0 2px;
+    }
+
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transition: box-shadow 0.15s ease-in-out;
+    }
+
+    /* تحسين مظهر البحث */
+    #search {
+        border-radius: 0.375rem;
+        border: 2px solid #dee2e6;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    #search:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    /* تحسين مظهر اقتراحات البحث */
+    #searchSuggestions {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 0.375rem 0.375rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .suggestion-item {
+        transition: background-color 0.15s ease-in-out;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.active {
+        background-color: #f8f9fa !important;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .suggestion-item mark {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 0.1em 0.2em;
+        border-radius: 0.25rem;
+    }
+
+    /* تحسين مظهر البحث عند التركيز */
+    .search-container {
+        position: relative;
+    }
+
+    .search-container:focus-within #search {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .search-container:focus-within #searchSuggestions:not(.d-none) {
+        border-top: 1px solid #86b7fe;
+    }
+</style>
 {% endblock %}

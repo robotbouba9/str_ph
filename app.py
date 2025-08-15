@@ -4,7 +4,7 @@
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-from database import db, init_database, Product, Customer, Supplier, Sale, SaleItem
+from database import db, init_database, Product, Customer, Supplier, Sale, SaleItem, Category
 from datetime import datetime, timedelta
 import os
 
@@ -68,26 +68,36 @@ def products():
     """صفحة المنتجات"""
     search = request.args.get('search', '')
     brand = request.args.get('brand', '')
+    category = request.args.get('category', '')
     
     query = Product.query
     
     if search:
-        query = query.filter(
-            db.or_(
-                Product.name.contains(search),
-                Product.model.contains(search),
-                Product.barcode.contains(search)
+        # بحث محسن يدعم البحث الجزئي والمرن
+        search_terms = search.split()
+        for term in search_terms:
+            query = query.filter(
+                db.or_(
+                    Product.name.ilike(f'%{term}%'),
+                    Product.model.ilike(f'%{term}%'),
+                    Product.brand.ilike(f'%{term}%'),
+                    Product.description.ilike(f'%{term}%'),
+                    Product.barcode.ilike(f'%{term}%')
+                )
             )
-        )
     
     if brand:
         query = query.filter(Product.brand == brand)
     
+    if category:
+        query = query.filter(Product.category_id == category)
+    
     products = query.order_by(Product.created_at.desc()).all()
     brands = db.session.query(Product.brand).distinct().all()
-    brands = [brand[0] for brand in brands]
+    brands = [brand[0] for brand in brands if brand[0]]
+    categories = Category.query.all()
     
-    return render_template('products.html', products=products, brands=brands)
+    return render_template('products.html', products=products, brands=brands, categories=categories)
 
 @app.route('/products/add', methods=['GET', 'POST'])
 def add_product():
@@ -99,12 +109,13 @@ def add_product():
                 brand=request.form['brand'],
                 model=request.form['model'],
                 color=request.form.get('color', ''),
-                storage=request.form.get('storage', ''),
+                description=request.form.get('description', ''),
                 price_buy=float(request.form['price_buy']),
                 price_sell=float(request.form['price_sell']),
                 quantity=int(request.form['quantity']),
                 min_quantity=int(request.form.get('min_quantity', 5)),
                 barcode=request.form.get('barcode', ''),
+                category_id=int(request.form['category_id']) if request.form['category_id'] else None,
                 supplier_id=int(request.form['supplier_id']) if request.form['supplier_id'] else None
             )
             
@@ -118,7 +129,8 @@ def add_product():
             db.session.rollback()
     
     suppliers = Supplier.query.all()
-    return render_template('add_product.html', suppliers=suppliers)
+    categories = Category.query.all()
+    return render_template('add_product.html', suppliers=suppliers, categories=categories)
 
 @app.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
 def edit_product(product_id):
@@ -131,12 +143,13 @@ def edit_product(product_id):
             product.brand = request.form['brand']
             product.model = request.form['model']
             product.color = request.form.get('color', '')
-            product.storage = request.form.get('storage', '')
+            product.description = request.form.get('description', '')
             product.price_buy = float(request.form['price_buy'])
             product.price_sell = float(request.form['price_sell'])
             product.quantity = int(request.form['quantity'])
             product.min_quantity = int(request.form.get('min_quantity', 5))
             product.barcode = request.form.get('barcode', '')
+            product.category_id = int(request.form['category_id']) if request.form['category_id'] else None
             product.supplier_id = int(request.form['supplier_id']) if request.form['supplier_id'] else None
             product.updated_at = datetime.utcnow()
             
@@ -149,7 +162,8 @@ def edit_product(product_id):
             db.session.rollback()
     
     suppliers = Supplier.query.all()
-    return render_template('edit_product.html', product=product, suppliers=suppliers)
+    categories = Category.query.all()
+    return render_template('edit_product.html', product=product, suppliers=suppliers, categories=categories)
 
 @app.route('/products/delete/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
@@ -164,6 +178,74 @@ def delete_product(product_id):
         db.session.rollback()
     
     return redirect(url_for('products'))
+
+# ==================== إدارة الفئات ====================
+
+@app.route('/categories')
+def categories():
+    """صفحة الفئات"""
+    categories = Category.query.order_by(Category.created_at.desc()).all()
+    return render_template('categories.html', categories=categories)
+
+@app.route('/categories/add', methods=['GET', 'POST'])
+def add_category():
+    """إضافة فئة جديدة"""
+    if request.method == 'POST':
+        try:
+            category = Category(
+                name=request.form['name'],
+                description=request.form.get('description', '')
+            )
+            
+            db.session.add(category)
+            db.session.commit()
+            flash('تم إضافة الفئة بنجاح', 'success')
+            return redirect(url_for('categories'))
+            
+        except Exception as e:
+            flash(f'خطأ في إضافة الفئة: {str(e)}', 'error')
+            db.session.rollback()
+    
+    return render_template('add_category.html')
+
+@app.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
+def edit_category(category_id):
+    """تعديل فئة"""
+    category = Category.query.get_or_404(category_id)
+    
+    if request.method == 'POST':
+        try:
+            category.name = request.form['name']
+            category.description = request.form.get('description', '')
+            
+            db.session.commit()
+            flash('تم تحديث الفئة بنجاح', 'success')
+            return redirect(url_for('categories'))
+            
+        except Exception as e:
+            flash(f'خطأ في تحديث الفئة: {str(e)}', 'error')
+            db.session.rollback()
+    
+    return render_template('edit_category.html', category=category)
+
+@app.route('/categories/delete/<int:category_id>', methods=['POST'])
+def delete_category(category_id):
+    """حذف فئة"""
+    try:
+        category = Category.query.get_or_404(category_id)
+        
+        # التحقق من وجود منتجات مرتبطة بهذه الفئة
+        if category.products:
+            flash('لا يمكن حذف هذه الفئة لأنها مرتبطة بمنتجات', 'error')
+        else:
+            db.session.delete(category)
+            db.session.commit()
+            flash('تم حذف الفئة بنجاح', 'success')
+    except Exception as e:
+        flash(f'خطأ في حذف الفئة: {str(e)}', 'error')
+        db.session.rollback()
+    
+    return redirect(url_for('categories'))
 
 # ==================== إدارة العملاء ====================
 
@@ -441,18 +523,26 @@ def reports():
 
 @app.route('/api/products/search')
 def api_search_products():
-    """البحث عن المنتجات عبر API"""
+    """البحث عن المنتجات عبر API - محسن"""
     query = request.args.get('q', '')
     
     if query:
-        products = Product.query.filter(
-            db.or_(
-                Product.name.contains(query),
-                Product.brand.contains(query),
-                Product.model.contains(query),
-                Product.barcode.contains(query)
+        # بحث محسن يدعم البحث الجزئي والمرن
+        search_terms = query.split()
+        products_query = Product.query
+        
+        for term in search_terms:
+            products_query = products_query.filter(
+                db.or_(
+                    Product.name.ilike(f'%{term}%'),
+                    Product.brand.ilike(f'%{term}%'),
+                    Product.model.ilike(f'%{term}%'),
+                    Product.description.ilike(f'%{term}%'),
+                    Product.barcode.ilike(f'%{term}%')
+                )
             )
-        ).limit(10).all()
+        
+        products = products_query.limit(10).all()
     else:
         products = Product.query.limit(10).all()
     

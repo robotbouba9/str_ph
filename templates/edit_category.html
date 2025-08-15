@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}تعديل الفئة - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-edit me-2"></i>
+            تعديل الفئة: {{ category.name }}
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('categories') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للفئات
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tags me-2"></i>
+                    تعديل بيانات الفئة
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="categoryForm">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="name" class="form-label">اسم الفئة <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                value="{{ category.name }}" placeholder="مثال: هواتف ذكية، سماعات، كابلات الشحن">
+                            <div class="form-text">اختر اسماً واضحاً ومميزاً للفئة</div>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label for="description" class="form-label">وصف الفئة</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="مثال: الهواتف المحمولة الذكية بجميع أنواعها وماركاتها">{{ category.description or '' }}</textarea>
+                            <div class="form-text">اكتب وصفاً مفصلاً للفئة ونوع المنتجات التي تشملها</div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-2"></i>
+                                حفظ التعديلات
+                            </button>
+                            <a href="{{ url_for('categories') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- معاينة الفئة -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    معاينة الفئة
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="categoryPreview">
+                    <!-- سيتم ملؤها بـ JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- معلومات إضافية -->
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    معلومات الفئة
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <strong>تاريخ الإضافة:</strong><br>
+                        <small class="text-muted">{{ category.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </li>
+                    <li class="mb-2">
+                        <strong>عدد المنتجات:</strong><br>
+                        <span class="badge bg-info">{{ category.products|length }} منتج</span>
+                    </li>
+                    {% if category.products|length > 0 %}
+                    <li class="mb-0">
+                        <strong>أمثلة على المنتجات:</strong><br>
+                        {% for product in category.products[:3] %}
+                        <small class="text-muted">• {{ product.name }}</small><br>
+                        {% endfor %}
+                        {% if category.products|length > 3 %}
+                        <small class="text-muted">... و {{ category.products|length - 3 }} منتج آخر</small>
+                        {% endif %}
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- تحذيرات -->
+        {% if category.products|length > 0 %}
+        <div class="card mt-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    تنبيه
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">هذه الفئة تحتوي على {{ category.products|length }} منتج. تعديل اسم الفئة سيؤثر على جميع
+                    المنتجات المرتبطة بها.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- نصائح -->
+        <div class="card mt-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    نصائح مفيدة
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        استخدم أسماء واضحة ومفهومة
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        تجنب التكرار في أسماء الفئات
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        اكتب وصفاً مفصلاً للفئة
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check text-success me-2"></i>
+                        تأكد من أن الاسم الجديد مناسب لجميع المنتجات
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // معاينة الفئة في الوقت الفعلي
+    function updatePreview() {
+        const name = document.getElementById('name').value || 'اسم الفئة';
+        const description = document.getElementById('description').value;
+
+        const previewHtml = `
+            <div class="text-center">
+                <div class="bg-light p-3 rounded mb-3">
+                    <i class="fas fa-tags fa-2x text-primary mb-2"></i>
+                    <h6 class="fw-bold">${name}</h6>
+                    ${description ? `<p class="text-muted small mb-0">${description}</p>` : ''}
+                </div>
+                
+                <div class="alert alert-info py-2 mb-2">
+                    <small><i class="fas fa-info-circle me-1"></i>{{ category.products|length }} منتج مرتبط بهذه الفئة</small>
+                </div>
+                
+                <div class="alert alert-success py-2 mb-0">
+                    <small><i class="fas fa-check-circle me-1"></i>ستظهر التعديلات على جميع المنتجات المرتبطة</small>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('categoryPreview').innerHTML = previewHtml;
+    }
+
+    // ربط الأحداث
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = ['name', 'description'];
+        inputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            }
+        });
+
+        updatePreview();
+    });
+
+    // التحقق من صحة النموذج
+    document.getElementById('categoryForm').addEventListener('submit', function (e) {
+        const name = document.getElementById('name').value.trim();
+
+        if (!name) {
+            e.preventDefault();
+            alert('يرجى إدخال اسم الفئة');
+            document.getElementById('name').focus();
+            return false;
+        }
+
+        if (name.length < 2) {
+            e.preventDefault();
+            alert('اسم الفئة يجب أن يكون أكثر من حرفين');
+            document.getElementById('name').focus();
+            return false;
+        }
+
+        // تأكيد التعديل إذا كانت الفئة تحتوي على منتجات
+        {% if category.products | length > 0 %}
+        if (!confirm('هذه الفئة تحتوي على {{ category.products|length }} منتج. هل أنت متأكد من التعديل؟')) {
+            e.preventDefault();
+            return false;
+        }
+        {% endif %}
+
+        return true;
+    });
+
+    // تحسين تجربة المستخدم
+    document.getElementById('name').addEventListener('input', function () {
+        this.value = this.value.replace(/^\s+/, ''); // إزالة المسافات من البداية
+    });
+</script>
+
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transition: box-shadow 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn {
+        border-radius: 0.375rem;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}إضافة فئة جديدة - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-plus-circle me-2"></i>
+            إضافة فئة جديدة
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('categories') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للفئات
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tags me-2"></i>
+                    بيانات الفئة
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="categoryForm">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="name" class="form-label">اسم الفئة <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                placeholder="مثال: هواتف ذكية، سماعات، كابلات الشحن">
+                            <div class="form-text">اختر اسماً واضحاً ومميزاً للفئة</div>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label for="description" class="form-label">وصف الفئة</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="مثال: الهواتف المحمولة الذكية بجميع أنواعها وماركاتها"></textarea>
+                            <div class="form-text">اكتب وصفاً مفصلاً للفئة ونوع المنتجات التي تشملها</div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-2"></i>
+                                حفظ الفئة
+                            </button>
+                            <a href="{{ url_for('categories') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- معاينة الفئة -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    معاينة الفئة
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="categoryPreview">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-tags fa-3x mb-3"></i>
+                        <p>املأ البيانات لمعاينة الفئة</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أمثلة على الفئات -->
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    أمثلة على الفئات
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-mobile-alt text-primary me-2"></i>
+                        <strong>هواتف ذكية:</strong> جميع أنواع الهواتف المحمولة
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-headphones text-success me-2"></i>
+                        <strong>سماعات:</strong> سماعات الرأس والأذن السلكية واللاسلكية
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-plug text-warning me-2"></i>
+                        <strong>كابلات الشحن:</strong> كابلات الشحن والبيانات بجميع الأنواع
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-battery-full text-info me-2"></i>
+                        <strong>شواحن:</strong> شواحن الهواتف والأجهزة الإلكترونية
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-shield-alt text-secondary me-2"></i>
+                        <strong>حافظات وجرابات:</strong> حافظات وجرابات الهواتف الواقية
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-star text-danger me-2"></i>
+                        <strong>اكسسوارات:</strong> اكسسوارات الهواتف المتنوعة
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- نصائح -->
+        <div class="card mt-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    نصائح مفيدة
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        استخدم أسماء واضحة ومفهومة
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        تجنب التكرار في أسماء الفئات
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        اكتب وصفاً مفصلاً للفئة
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check text-success me-2"></i>
+                        فكر في المنتجات التي ستضعها في هذه الفئة
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // معاينة الفئة في الوقت الفعلي
+    function updatePreview() {
+        const name = document.getElementById('name').value || 'اسم الفئة';
+        const description = document.getElementById('description').value;
+
+        const previewHtml = `
+            <div class="text-center">
+                <div class="bg-light p-3 rounded mb-3">
+                    <i class="fas fa-tags fa-2x text-primary mb-2"></i>
+                    <h6 class="fw-bold">${name}</h6>
+                    ${description ? `<p class="text-muted small mb-0">${description}</p>` : ''}
+                </div>
+                
+                <div class="alert alert-info py-2 mb-0">
+                    <small><i class="fas fa-info-circle me-1"></i>ستظهر هذه الفئة في قائمة الفئات عند إضافة المنتجات</small>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('categoryPreview').innerHTML = previewHtml;
+    }
+
+    // ربط الأحداث
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = ['name', 'description'];
+        inputs.forEach(inputId => {
+            const element = document.getElementById(inputId);
+            if (element) {
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            }
+        });
+
+        updatePreview();
+    });
+
+    // التحقق من صحة النموذج
+    document.getElementById('categoryForm').addEventListener('submit', function (e) {
+        const name = document.getElementById('name').value.trim();
+
+        if (!name) {
+            e.preventDefault();
+            alert('يرجى إدخال اسم الفئة');
+            document.getElementById('name').focus();
+            return false;
+        }
+
+        if (name.length < 2) {
+            e.preventDefault();
+            alert('اسم الفئة يجب أن يكون أكثر من حرفين');
+            document.getElementById('name').focus();
+            return false;
+        }
+
+        return true;
+    });
+
+    // تحسين تجربة المستخدم
+    document.getElementById('name').addEventListener('input', function () {
+        this.value = this.value.replace(/^\s+/, ''); // إزالة المسافات من البداية
+    });
+</script>
+
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transition: box-shadow 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn {
+        border-radius: 0.375rem;
+    }
+</style>
+{% endblock %}

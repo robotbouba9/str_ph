@@ -62,24 +62,34 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
+                            <label for="category_id" class="form-label">الفئة <span class="text-danger">*</span></label>
+                            <select class="form-select" id="category_id" name="category_id" required>
+                                <option value="">اختر الفئة</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" {% if product.category_id==category.id %}selected{%
+                                    endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <a href="{{ url_for('add_category') }}" target="_blank" class="text-decoration-none">
+                                    <i class="fas fa-plus me-1"></i>إضافة فئة جديدة
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
                             <label for="color" class="form-label">اللون</label>
                             <input type="text" class="form-control" id="color" name="color"
                                 value="{{ product.color or '' }}" placeholder="مثال: أزرق تيتانيوم">
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label for="storage" class="form-label">مساحة التخزين</label>
-                            <select class="form-select" id="storage" name="storage">
-                                <option value="">اختر مساحة التخزين</option>
-                                <option value="64GB" {% if product.storage=='64GB' %}selected{% endif %}>64GB</option>
-                                <option value="128GB" {% if product.storage=='128GB' %}selected{% endif %}>128GB
-                                </option>
-                                <option value="256GB" {% if product.storage=='256GB' %}selected{% endif %}>256GB
-                                </option>
-                                <option value="512GB" {% if product.storage=='512GB' %}selected{% endif %}>512GB
-                                </option>
-                                <option value="1TB" {% if product.storage=='1TB' %}selected{% endif %}>1TB</option>
-                            </select>
+                        <div class="col-md-12 mb-3">
+                            <label for="description" class="form-label">وصف المنتج ومواصفاته</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="مثال: شاشة 6.1 بوصة Super Retina XDR، معالج A17 Pro، كاميرا ثلاثية 48MP، ذاكرة 256GB، مقاوم للماء IP68">{{ product.description or '' }}</textarea>
+                            <div class="form-text">اكتب وصفاً مفصلاً للمنتج ومواصفاته التقنية</div>
                         </div>
 
                         <div class="col-md-6 mb-3">
@@ -225,7 +235,9 @@
         const brand = document.getElementById('brand').value || 'الماركة';
         const model = document.getElementById('model').value || 'الموديل';
         const color = document.getElementById('color').value;
-        const storage = document.getElementById('storage').value;
+        const description = document.getElementById('description').value;
+        const categorySelect = document.getElementById('category_id');
+        const categoryName = categorySelect.options[categorySelect.selectedIndex]?.text || '';
         const priceBuy = document.getElementById('price_buy').value;
         const priceSell = document.getElementById('price_sell').value;
         const quantity = document.getElementById('quantity').value;
@@ -241,17 +253,18 @@
         const previewHtml = `
             <div class="text-center">
                 <div class="bg-light p-3 rounded mb-3">
-                    <i class="fas fa-mobile-alt fa-2x text-primary mb-2"></i>
+                    <i class="fas fa-box fa-2x text-primary mb-2"></i>
                     <h6 class="fw-bold">${name}</h6>
                     <p class="text-muted mb-1">${brand} ${model}</p>
+                    ${categoryName && categoryName !== 'اختر الفئة' ? `<span class="badge bg-info mb-2">${categoryName}</span><br>` : ''}
                     ${color ? `<small class="text-muted">اللون: ${color}</small><br>` : ''}
-                    ${storage ? `<small class="text-muted">التخزين: ${storage}</small>` : ''}
+                    ${description ? `<small class="text-muted text-truncate d-block" style="max-height: 40px; overflow: hidden;">${description}</small>` : ''}
                 </div>
                 
                 ${priceSell ? `
                 <div class="row text-center mb-2">
                     <div class="col-12">
-                        <h5 class="text-primary mb-0">${parseFloat(priceSell).toLocaleString('ar-EG')} جنيه</h5>
+                        <h5 class="text-primary mb-0">${parseFloat(priceSell).toLocaleString('en-US')} جنيه</h5>
                         <small class="text-muted">سعر البيع</small>
                     </div>
                 </div>
@@ -259,7 +272,7 @@
                 
                 ${profit > 0 ? `
                 <div class="alert alert-success py-2 mb-2">
-                    <small>الربح: ${profit.toLocaleString('ar-EG')} جنيه (${profitPercent}%)</small>
+                    <small>الربح: ${profit.toLocaleString('en-US')} جنيه (${profitPercent}%)</small>
                 </div>
                 ` : ''}
                 
@@ -276,7 +289,7 @@
 
     // ربط الأحداث
     document.addEventListener('DOMContentLoaded', function () {
-        const inputs = ['name', 'brand', 'model', 'color', 'storage', 'price_buy', 'price_sell', 'quantity', 'min_quantity'];
+        const inputs = ['name', 'brand', 'model', 'color', 'description', 'category_id', 'price_buy', 'price_sell', 'quantity', 'min_quantity'];
         inputs.forEach(inputId => {
             const element = document.getElementById(inputId);
             if (element) {

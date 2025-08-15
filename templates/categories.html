@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}الفئات - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-tags me-2"></i>
+            إدارة الفئات
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('add_category') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            إضافة فئة جديدة
+        </a>
+    </div>
+</div>
+
+<!-- جدول الفئات -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة الفئات ({{ categories|length }} فئة)
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if categories %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>اسم الفئة</th>
+                        <th>الوصف</th>
+                        <th>عدد المنتجات</th>
+                        <th>تاريخ الإضافة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>
+                            <strong>{{ category.name }}</strong>
+                            <span class="badge bg-info ms-2">{{ category.products|length }} منتج</span>
+                        </td>
+                        <td>
+                            {% if category.description %}
+                            <span class="text-truncate d-inline-block" style="max-width: 300px;"
+                                title="{{ category.description }}">
+                                {{ category.description }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if category.products|length > 0 %}
+                            <span class="badge bg-success">{{ category.products|length }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ category.created_at.strftime('%Y-%m-%d') }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_category', category_id=category.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if category.products|length == 0 %}
+                                <form method="POST" action="{{ url_for('delete_category', category_id=category.id) }}"
+                                    class="d-inline" onsubmit="return confirmDelete('هل أنت متأكد من حذف هذه الفئة؟')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-danger" disabled
+                                    title="لا يمكن حذف فئة تحتوي على منتجات">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد فئات</h5>
+            <p class="text-muted">لم يتم إضافة أي فئات بعد</p>
+            <a href="{{ url_for('add_category') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                إضافة أول فئة
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+{% if categories %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ "{:,}".format(categories|length) }}</h5>
+                <p class="card-text">إجمالي الفئات</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success" id="active-categories">0</h5>
+                <p class="card-text">فئات تحتوي على منتجات</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning" id="empty-categories">0</h5>
+                <p class="card-text">فئات فارغة</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info" id="total-products">0</h5>
+                <p class="card-text">إجمالي المنتجات</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // حساب الإحصائيات
+    document.addEventListener('DOMContentLoaded', function () {
+        let activeCategories = 0;
+        let emptyCategories = 0;
+        let totalProducts = 0;
+
+        // حساب الإحصائيات من الجدول
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const productCountCell = row.querySelector('td:nth-child(3)');
+            if (productCountCell) {
+                const badge = productCountCell.querySelector('.badge');
+                if (badge) {
+                    const count = parseInt(badge.textContent);
+                    totalProducts += count;
+                    if (count > 0) {
+                        activeCategories++;
+                    } else {
+                        emptyCategories++;
+                    }
+                }
+            }
+        });
+
+        // تحديث العدادات
+        const activeElement = document.getElementById('active-categories');
+        const emptyElement = document.getElementById('empty-categories');
+        const totalElement = document.getElementById('total-products');
+
+        if (activeElement) activeElement.textContent = activeCategories.toLocaleString();
+        if (emptyElement) emptyElement.textContent = emptyCategories.toLocaleString();
+        if (totalElement) totalElement.textContent = totalProducts.toLocaleString();
+    });
+
+    // تأكيد الحذف
+    function confirmDelete(message) {
+        return confirm(message);
+    }
+
+    // إضافة تأثيرات بصرية للجدول
+    document.addEventListener('DOMContentLoaded', function () {
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function () {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            row.addEventListener('mouseleave', function () {
+                this.style.backgroundColor = '';
+            });
+        });
+    });
+</script>
+
+<style>
+    /* تحسينات CSS إضافية */
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .badge {
+        font-size: 0.875em;
+    }
+
+    .btn-group .btn {
+        margin: 0 2px;
+    }
+
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transition: box-shadow 0.15s ease-in-out;
+    }
+</style>
+{% endblock %}

@@ -10,21 +10,46 @@ import os
 
 db = SQLAlchemy()
 
+class Category(db.Model):
+    """جدول الفئات"""
+    __tablename__ = 'categories'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)  # اسم الفئة
+    description = db.Column(db.Text)  # وصف الفئة
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # العلاقات
+    products = db.relationship('Product', backref='category')
+    
+    def __repr__(self):
+        return f'<Category {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else '',
+            'products_count': len(self.products)
+        }
+
 class Product(db.Model):
-    """جدول المنتجات (الهواتف)"""
+    """جدول المنتجات"""
     __tablename__ = 'products'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)  # اسم الهاتف
+    name = db.Column(db.String(200), nullable=False)  # اسم المنتج
     brand = db.Column(db.String(100), nullable=False)  # الماركة
     model = db.Column(db.String(100), nullable=False)  # الموديل
     color = db.Column(db.String(50))  # اللون
-    storage = db.Column(db.String(50))  # مساحة التخزين
+    description = db.Column(db.Text)  # وصف المنتج ومواصفاته
     price_buy = db.Column(db.Float, nullable=False)  # سعر الشراء
     price_sell = db.Column(db.Float, nullable=False)  # سعر البيع
     quantity = db.Column(db.Integer, default=0)  # الكمية المتوفرة
     min_quantity = db.Column(db.Integer, default=5)  # الحد الأدنى للكمية
     barcode = db.Column(db.String(100), unique=True)  # الباركود
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))  # الفئة
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -43,12 +68,14 @@ class Product(db.Model):
             'brand': self.brand,
             'model': self.model,
             'color': self.color,
-            'storage': self.storage,
+            'description': self.description,
             'price_buy': self.price_buy,
             'price_sell': self.price_sell,
             'quantity': self.quantity,
             'min_quantity': self.min_quantity,
             'barcode': self.barcode,
+            'category_id': self.category_id,
+            'category_name': self.category.name if self.category else '',
             'supplier_id': self.supplier_id,
             'supplier_name': self.supplier.name if self.supplier else '',
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else '',
@@ -181,6 +208,20 @@ def init_database(app):
 def add_sample_data():
     """إضافة بيانات تجريبية"""
     try:
+        # إضافة الفئات
+        categories = [
+            Category(name='هواتف ذكية', description='الهواتف المحمولة الذكية بجميع أنواعها'),
+            Category(name='سماعات', description='سماعات الرأس والأذن السلكية واللاسلكية'),
+            Category(name='كابلات الشحن', description='كابلات الشحن والبيانات بجميع الأنواع'),
+            Category(name='شواحن', description='شواحن الهواتف والأجهزة الإلكترونية'),
+            Category(name='حافظات وجرابات', description='حافظات وجرابات الهواتف الواقية'),
+            Category(name='اكسسوارات', description='اكسسوارات الهواتف المتنوعة')
+        ]
+        
+        for category in categories:
+            db.session.add(category)
+        db.session.commit()
+        
         # إضافة موردين
         supplier1 = Supplier(
             name='أحمد محمد',
@@ -221,6 +262,12 @@ def add_sample_data():
         db.session.add(customer2)
         db.session.commit()
         
+        # الحصول على الفئات المضافة
+        phone_category = Category.query.filter_by(name='هواتف ذكية').first()
+        headphones_category = Category.query.filter_by(name='سماعات').first()
+        cable_category = Category.query.filter_by(name='كابلات الشحن').first()
+        charger_category = Category.query.filter_by(name='شواحن').first()
+        
         # إضافة منتجات
         products = [
             Product(
@@ -228,12 +275,13 @@ def add_sample_data():
                 brand='Apple',
                 model='iPhone 15 Pro',
                 color='أزرق تيتانيوم',
-                storage='256GB',
+                description='شاشة 6.1 بوصة Super Retina XDR، معالج A17 Pro، كاميرا ثلاثية 48MP، ذاكرة 256GB، مقاوم للماء IP68',
                 price_buy=45000,
                 price_sell=52000,
                 quantity=10,
                 min_quantity=3,
                 barcode='1234567890123',
+                category_id=phone_category.id if phone_category else None,
                 supplier_id=supplier1.id
             ),
             Product(
@@ -241,39 +289,56 @@ def add_sample_data():
                 brand='Samsung',
                 model='Galaxy S24',
                 color='أسود',
-                storage='128GB',
+                description='شاشة 6.2 بوصة Dynamic AMOLED، معالج Snapdragon 8 Gen 3، كاميرا ثلاثية 50MP، ذاكرة 128GB، مقاوم للماء IP68',
                 price_buy=25000,
                 price_sell=30000,
                 quantity=15,
                 min_quantity=5,
                 barcode='1234567890124',
+                category_id=phone_category.id if phone_category else None,
                 supplier_id=supplier2.id
             ),
             Product(
-                name='Xiaomi 14',
-                brand='Xiaomi',
-                model='14',
+                name='AirPods Pro 2',
+                brand='Apple',
+                model='AirPods Pro 2nd Gen',
                 color='أبيض',
-                storage='256GB',
-                price_buy=18000,
-                price_sell=22000,
-                quantity=8,
-                min_quantity=3,
+                description='سماعات لاسلكية مع إلغاء الضوضاء النشط، شريحة H2، مقاومة للعرق والماء IPX4، علبة شحن MagSafe',
+                price_buy=8000,
+                price_sell=10500,
+                quantity=12,
+                min_quantity=4,
                 barcode='1234567890125',
+                category_id=headphones_category.id if headphones_category else None,
                 supplier_id=supplier1.id
             ),
             Product(
-                name='Huawei P60 Pro',
-                brand='Huawei',
-                model='P60 Pro',
-                color='ذهبي',
-                storage='512GB',
-                price_buy=28000,
-                price_sell=35000,
-                quantity=5,
-                min_quantity=2,
+                name='كابل USB-C إلى Lightning',
+                brand='Apple',
+                model='USB-C to Lightning Cable',
+                color='أبيض',
+                description='كابل شحن ونقل بيانات أصلي من Apple، طول 1 متر، يدعم الشحن السريع حتى 20W، متوافق مع جميع أجهزة iPhone',
+                price_buy=150,
+                price_sell=250,
+                quantity=50,
+                min_quantity=10,
                 barcode='1234567890126',
+                category_id=cable_category.id if cable_category else None,
                 supplier_id=supplier2.id
+            ),
+            Product(
+                name='شاحن سريع 25W',
+                brand='Samsung',
+                model='EP-TA800',
+                color='أسود',
+                description='شاحن سريع أصلي من Samsung بقوة 25W، منفذ USB-C، يدعم تقنية Power Delivery، متوافق مع جميع الأجهزة',
+                price_buy=200,
+                price_sell=350,
+                quantity=25,
+                min_quantity=8,
+                barcode='1234567890127',
+                category_id=charger_category.id if charger_category else None,
+                supplier_id=supplier1.id
             )
         ]
         
