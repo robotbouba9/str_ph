@@ -56,30 +56,36 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="format-number">{{ sale.total_amount }}</span> جنيه
+                            {{ sale.total_amount|currency }}
                         </td>
                         <td>
                             {% if sale.discount > 0 %}
-                            <span class="text-danger format-number">{{ sale.discount }}</span> جنيه
+                            <span class="text-danger">{{ sale.discount|currency }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                         <td>
-                            <strong class="text-success format-number">{{ sale.final_amount }}</strong> جنيه
+                            <strong class="text-success">{{ sale.final_amount|currency }}</strong>
                         </td>
                         <td>
                             <span class="badge bg-info">{{ sale.payment_method }}</span>
                         </td>
                         <td>
-                            {{ sale.created_at.strftime('%Y-%m-%d') }}<br>
-                            <small class="text-muted">{{ sale.created_at.strftime('%H:%M') }}</small>
+                            {{ sale.created_at.strftime('%Y-%m-%d')|english_numbers }}<br>
+                            <small class="text-muted">{{ sale.created_at.strftime('%H:%M')|english_numbers }}</small>
                         </td>
                         <td>
-                            <a href="{{ url_for('view_sale', sale_id=sale.id) }}" class="btn btn-sm btn-outline-primary"
-                                title="عرض">
-                                <i class="fas fa-eye"></i>
-                            </a>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_sale', sale_id=sale.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="عرض">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('sale_regular_pdf', sale_id=sale.id) }}"
+                                    class="btn btn-sm btn-outline-success" title="PDF عادي (A4)" target="_blank">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

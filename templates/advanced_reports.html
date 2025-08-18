@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}التقارير المتقدمة{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- فلاتر التاريخ -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">فلاتر التقرير</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="start_date" class="form-label">من تاريخ</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date"
+                                value="{{ start_date or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="end_date" class="form-label">إلى تاريخ</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date"
+                                value="{{ end_date or '' }}">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-filter"></i> تطبيق الفلتر
+                            </button>
+                            <a href="{{ url_for('advanced_reports') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> مسح
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الإحصائيات الرئيسية -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ total_sales_revenue|currency }}</h4>
+                            <p class="mb-0">إجمالي المبيعات</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ total_purchases_cost|currency }}</h4>
+                            <p class="mb-0">إجمالي المشتريات</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-shopping-cart fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card {% if profit >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ profit|currency }}</h4>
+                            <p class="mb-0">صافي الربح</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-coins fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ low_stock|length }}</h4>
+                            <p class="mb-0">منتجات منخفضة المخزون</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- أزرار التصدير -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">تصدير التقارير</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('export_sales_excel', start_date=start_date, end_date=end_date) }}"
+                            class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> تقرير المبيعات Excel
+                        </a>
+                        <a href="{{ url_for('export_purchases_excel', start_date=start_date, end_date=end_date) }}"
+                            class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> تقرير المشتريات Excel
+                        </a>
+                        <a href="{{ url_for('export_products_excel') }}" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> تقرير المنتجات Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- أكثر المنتجات مبيعاً -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">أكثر المنتجات مبيعاً</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_products %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>الماركة</th>
+                                    <th>الكمية المباعة</th>
+                                    <th>الإيرادات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in top_products %}
+                                <tr>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.brand }}</td>
+                                    <td><span class="badge bg-primary">{{ product.total_sold }}</span></td>
+                                    <td>{{ product.total_revenue|currency }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">لا توجد بيانات مبيعات</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- المنتجات منخفضة المخزون -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">المنتجات منخفضة المخزون</h5>
+                </div>
+                <div class="card-body">
+                    {% if low_stock %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>الماركة</th>
+                                    <th>الكمية الحالية</th>
+                                    <th>الحد الأدنى</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in low_stock %}
+                                <tr>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.brand }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ product.quantity }}</span>
+                                    </td>
+                                    <td>{{ product.min_quantity }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-success">
+                        <i class="fas fa-check-circle fa-3x mb-2"></i>
+                        <p>جميع المنتجات متوفرة بكميات كافية</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- تفاصيل المبيعات والمشتريات -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">آخر المبيعات</h5>
+                </div>
+                <div class="card-body">
+                    {% if sales %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>العميل</th>
+                                    <th>التاريخ</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sale in sales[:10] %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('view_sale', sale_id=sale.id) }}">
+                                            {{ sale.id }}
+                                        </a>
+                                    </td>
+                                    <td>{{ sale.customer.name if sale.customer else 'عميل غير محدد' }}</td>
+                                    <td>{{ sale.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ sale.final_amount|currency }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">لا توجد مبيعات في هذه الفترة</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">آخر المشتريات</h5>
+                </div>
+                <div class="card-body">
+                    {% if purchases %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>رقم الفاتورة</th>
+                                    <th>المورد</th>
+                                    <th>التاريخ</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for purchase in purchases[:10] %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('view_purchase', purchase_id=purchase.id) }}">
+                                            {{ purchase.invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ purchase.supplier.name }}</td>
+                                    <td>{{ purchase.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ purchase.final_amount|currency }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">لا توجد مشتريات في هذه الفترة</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

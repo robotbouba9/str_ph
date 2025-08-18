@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}إعدادات المتجر{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex align-items-center justify-content-between">
+        <h1 class="h3 mb-0"><i class="fas fa-gear me-2"></i> إعدادات المتجر</h1>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary"><i
+                class="fas fa-arrow-right me-2"></i>عودة</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">اسم المتجر (EN)</label>
+                    <input type="text" name="store_name" class="form-control" value="{{ settings.store_name }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">اسم المتجر (AR)</label>
+                    <input type="text" name="store_name_ar" class="form-control" value="{{ settings.store_name_ar }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">العنوان</label>
+                    <input type="text" name="address" class="form-control" value="{{ settings.address }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">الهاتف</label>
+                    <input type="text" name="phone" class="form-control" value="{{ settings.phone }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">البريد</label>
+                    <input type="email" name="email" class="form-control" value="{{ settings.email }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">اسم العملة</label>
+                    <input type="text" name="currency_name" class="form-control" value="{{ settings.currency_name }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">رمز العملة</label>
+                    <input type="text" name="currency_symbol" class="form-control"
+                        value="{{ settings.currency_symbol }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">الشعار (اختياري)</label>
+                    <input type="file" name="logo" class="form-control" accept="image/*" disabled>
+                    <small class="text-muted">سيتم دعم الرفع لاحقاً</small>
+                </div>
+            </div>
+
+            <div class="text-end mt-4">
+                <button class="btn btn-primary"><i class="fas fa-save me-2"></i>حفظ</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

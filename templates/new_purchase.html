@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}فاتورة شراء جديدة{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">إنشاء فاتورة شراء جديدة</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('purchases') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> العودة
+                        </a>
+                    </div>
+                </div>
+
+                <form method="POST" id="purchaseForm">
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- معلومات المورد -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="supplier_id">المورد *</label>
+                                    <select class="form-control" id="supplier_id" name="supplier_id" required>
+                                        <option value="">اختر المورد</option>
+                                        {% for supplier in suppliers %}
+                                        <option value="{{ supplier.id }}">{{ supplier.name }} - {{ supplier.company or
+                                            '' }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- طريقة الدفع -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="payment_method">طريقة الدفع</label>
+                                    <select class="form-control" id="payment_method" name="payment_method">
+                                        <option value="نقدي">نقدي</option>
+                                        <option value="شيك">شيك</option>
+                                        <option value="تحويل بنكي">تحويل بنكي</option>
+                                        <option value="آجل">آجل</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ملاحظات -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="notes">ملاحظات</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- عناصر الفاتورة -->
+                        <h5>عناصر الفاتورة</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="itemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="35%">المنتج</th>
+                                        <th width="15%">الكمية</th>
+                                        <th width="20%">سعر الوحدة (د.ج)</th>
+                                        <th width="20%">المجموع (د.ج)</th>
+                                        <th width="10%">حذف</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemsBody">
+                                    <tr class="item-row">
+                                        <td>
+                                            <select class="form-control product-select" name="product_id[]" required>
+                                                <option value="">اختر المنتج</option>
+                                                {% for product in products %}
+                                                <option value="{{ product.id }}" data-price="{{ product.price_buy }}">
+                                                    {{ product.name }} - {{ product.brand }} {{ product.model }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control quantity-input" name="quantity[]"
+                                                min="1" value="1" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control price-input" name="unit_price[]"
+                                                step="0.01" min="0" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control total-input" readonly>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger btn-sm remove-item">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button type="button" class="btn btn-success" id="addItem">
+                            <i class="fas fa-plus"></i> إضافة منتج
+                        </button>
+
+                        <hr>
+
+                        <!-- المجاميع -->
+                        <div class="row">
+                            <div class="col-md-8"></div>
+                            <div class="col-md-4">
+                                <table class="table">
+                                    <tr>
+                                        <td><strong>المجموع الفرعي:</strong></td>
+                                        <td>
+                                            <input type="number" class="form-control" id="total_amount"
+                                                name="total_amount" readonly>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>الخصم:</strong></td>
+                                        <td>
+                                            <input type="number" class="form-control" id="discount" name="discount"
+                                                value="0" step="0.01" min="0">
+                                        </td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td><strong>المجموع النهائي:</strong></td>
+                                        <td>
+                                            <input type="number" class="form-control" id="final_amount"
+                                                name="final_amount" readonly>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> حفظ الفاتورة
+                        </button>
+                        <a href="{{ url_for('purchases') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const itemsBody = document.getElementById('itemsBody');
+        const addItemBtn = document.getElementById('addItem');
+
+        // إضافة منتج جديد
+        addItemBtn.addEventListener('click', function () {
+            const newRow = itemsBody.querySelector('.item-row').cloneNode(true);
+
+            // مسح القيم
+            newRow.querySelectorAll('input').forEach(input => {
+                if (input.type === 'number') {
+                    input.value = input.name.includes('quantity') ? '1' : '';
+                }
+            });
+            newRow.querySelector('select').selectedIndex = 0;
+
+            itemsBody.appendChild(newRow);
+            attachRowEvents(newRow);
+        });
+
+        // ربط الأحداث بالصفوف الموجودة
+        itemsBody.querySelectorAll('.item-row').forEach(row => {
+            attachRowEvents(row);
+        });
+
+        function attachRowEvents(row) {
+            const productSelect = row.querySelector('.product-select');
+            const quantityInput = row.querySelector('.quantity-input');
+            const priceInput = row.querySelector('.price-input');
+            const totalInput = row.querySelector('.total-input');
+            const removeBtn = row.querySelector('.remove-item');
+
+            // تحديث السعر عند اختيار المنتج
+            productSelect.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.dataset.price) {
+                    priceInput.value = selectedOption.dataset.price;
+                    calculateRowTotal();
+                }
+            });
+
+            // حساب المجموع عند تغيير الكمية أو السعر
+            quantityInput.addEventListener('input', calculateRowTotal);
+            priceInput.addEventListener('input', calculateRowTotal);
+
+            // حذف الصف
+            removeBtn.addEventListener('click', function () {
+                if (itemsBody.children.length > 1) {
+                    row.remove();
+                    calculateGrandTotal();
+                }
+            });
+
+            function calculateRowTotal() {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const price = parseFloat(priceInput.value) || 0;
+                const total = quantity * price;
+                totalInput.value = total.toFixed(2);
+                calculateGrandTotal();
+            }
+        }
+
+        // حساب المجموع الكلي
+        function calculateGrandTotal() {
+            let subtotal = 0;
+
+            itemsBody.querySelectorAll('.total-input').forEach(input => {
+                subtotal += parseFloat(input.value) || 0;
+            });
+
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            const finalAmount = subtotal - discount;
+
+            document.getElementById('total_amount').value = subtotal.toFixed(2);
+            document.getElementById('final_amount').value = finalAmount.toFixed(2);
+        }
+
+        // حساب المجموع عند تغيير الخصم
+        document.getElementById('discount').addEventListener('input', calculateGrandTotal);
+
+        // حساب المجموع الأولي
+        calculateGrandTotal();
+    });
+</script>
+{% endblock %}
