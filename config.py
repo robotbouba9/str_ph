@@ -10,7 +10,11 @@ class Config:
     """إعدادات البرنامج الأساسية"""
     
     # إعدادات قاعدة البيانات
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///phone_store.db'
+    _db_url = os.environ.get('DATABASE_URL')
+    if _db_url and _db_url.startswith('postgres://'):
+        # توافق Render/Heroku مع SQLAlchemy
+        _db_url = _db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_url or 'sqlite:///phone_store.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # إعدادات الأمان
