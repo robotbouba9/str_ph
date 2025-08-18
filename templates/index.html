@@ -18,7 +18,7 @@
         <div class="stats-card">
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
-                    <div class="stats-number">{{ "{:,}".format(stats.total_products) }}</div>
+                    <div class="stats-number">{{ "{:,}".format(stats.total_products)|english_numbers }}</div>
                     <div class="stats-label">إجمالي المنتجات</div>
                 </div>
                 <div class="stats-icon">
@@ -32,7 +32,7 @@
         <div class="stats-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
-                    <div class="stats-number">{{ "{:,}".format(stats.total_customers) }}</div>
+                    <div class="stats-number">{{ "{:,}".format(stats.total_customers)|english_numbers }}</div>
                     <div class="stats-label">إجمالي العملاء</div>
                 </div>
                 <div class="stats-icon">
@@ -46,7 +46,7 @@
         <div class="stats-card" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
-                    <div class="stats-number">{{ "{:,}".format(stats.total_suppliers) }}</div>
+                    <div class="stats-number">{{ "{:,}".format(stats.total_suppliers)|english_numbers }}</div>
                     <div class="stats-label">إجمالي الموردين</div>
                 </div>
                 <div class="stats-icon">
@@ -60,7 +60,7 @@
         <div class="stats-card" style="background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);">
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
-                    <div class="stats-number">{{ "{:,}".format(stats.low_stock_count) }}</div>
+                    <div class="stats-number">{{ "{:,}".format(stats.low_stock_count)|english_numbers }}</div>
                     <div class="stats-label">منتجات منخفضة المخزون</div>
                 </div>
                 <div class="stats-icon">
@@ -84,8 +84,8 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-6">
-                        <h3 class="text-primary">{{ "{:,.0f}".format(stats.today_revenue) }}</h3>
-                        <p class="text-muted mb-0">إجمالي المبيعات (جنيه)</p>
+                        <h3 class="text-primary">{{ stats.today_revenue|currency }}</h3>
+                        <p class="text-muted mb-0">إجمالي المبيعات (د.ج)</p>
                     </div>
                     <div class="col-6">
                         <h3 class="text-success">{{ "{:,}".format(stats.today_sales_count) }}</h3>
@@ -208,7 +208,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span>{{ "{:,.0f}".format(sale.final_amount) }}</span> جنيه
+                                    {{ sale.final_amount|currency }}
                                 </td>
                                 <td>
                                     <span class="badge bg-info">{{ sale.payment_method }}</span>

@@ -11,6 +11,17 @@
         </h1>
     </div>
     <div class="col-md-4 text-end">
+        <div class="btn-group me-2" role="group">
+            <a href="{{ url_for('sale_regular_pdf', sale_id=sale.id) }}" class="btn btn-success" target="_blank"
+                title="PDF عادي (A4)">
+                <i class="fas fa-file-pdf me-1"></i>
+                عادي
+            </a>
+            <button type="button" class="btn btn-dark" title="طباعة حرارية 80mm" onclick="printThermal()">
+                <i class="fas fa-receipt me-1"></i>
+                حراري 80mm
+            </button>
+        </div>
         <a href="{{ url_for('sales') }}" class="btn btn-outline-secondary me-2">
             <i class="fas fa-arrow-right me-2"></i>
             العودة للمبيعات
@@ -36,7 +47,7 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <h4 class="mb-0">فاتورة رقم: #{{ sale.id }}</h4>
-                        <p class="mb-0">{{ sale.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p class="mb-0">{{ sale.created_at.strftime('%Y-%m-%d %H:%M')|english_numbers }}</p>
                     </div>
                 </div>
             </div>
@@ -49,7 +60,7 @@
                         {% if sale.customer %}
                         <p class="mb-1"><strong>الاسم:</strong> {{ sale.customer.name }}</p>
                         {% if sale.customer.phone %}
-                        <p class="mb-1"><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
+                        <p class="mb-1"><strong>الهاتف:</strong> {{ sale.customer.phone|english_numbers }}</p>
                         {% endif %}
                         {% if sale.customer.email %}
                         <p class="mb-1"><strong>البريد:</strong> {{ sale.customer.email }}</p>
@@ -65,8 +76,10 @@
                     <div class="col-md-6">
                         <h6 class="text-primary">تفاصيل الفاتورة:</h6>
                         <p class="mb-1"><strong>طريقة الدفع:</strong> {{ sale.payment_method }}</p>
-                        <p class="mb-1"><strong>التاريخ:</strong> {{ sale.created_at.strftime('%Y-%m-%d') }}</p>
-                        <p class="mb-1"><strong>الوقت:</strong> {{ sale.created_at.strftime('%H:%M:%S') }}</p>
+                        <p class="mb-1"><strong>التاريخ:</strong> {{
+                            sale.created_at.strftime('%Y-%m-%d')|english_numbers }}</p>
+                        <p class="mb-1"><strong>الوقت:</strong> {{ sale.created_at.strftime('%H:%M:%S')|english_numbers
+                            }}</p>
                     </div>
                 </div>
 
@@ -89,13 +102,13 @@
                                     <small class="text-muted">{{ item.product.brand }} {{ item.product.model }}</small>
                                 </td>
                                 <td>
-                                    <span class="format-number">{{ item.unit_price }}</span> جنيه
+                                    {{ item.unit_price|currency }}
                                 </td>
                                 <td>
                                     {{ item.quantity }}
                                 </td>
                                 <td>
-                                    <span class="format-number">{{ item.total_price }}</span> جنيه
+                                    {{ item.total_price|currency }}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -120,7 +133,7 @@
                                         <strong>المجموع الفرعي:</strong>
                                     </div>
                                     <div class="col-6 text-end">
-                                        <span class="format-number">{{ sale.total_amount }}</span> جنيه
+                                        {{ sale.total_amount|currency }}
                                     </div>
                                 </div>
 
@@ -130,7 +143,7 @@
                                         <strong>الخصم:</strong>
                                     </div>
                                     <div class="col-6 text-end text-danger">
-                                        - <span class="format-number">{{ sale.discount }}</span> جنيه
+                                        - {{ sale.discount|currency }}
                                     </div>
                                 </div>
                                 {% endif %}
@@ -142,8 +155,7 @@
                                         <h5 class="text-primary"><strong>الإجمالي:</strong></h5>
                                     </div>
                                     <div class="col-6 text-end">
-                                        <h5 class="text-primary"><strong><span class="format-number">{{
-                                                    sale.final_amount }}</span> جنيه</strong></h5>
+                                        <h5 class="text-primary"><strong>{{ sale.final_amount|currency }}</strong></h5>
                                     </div>
                                 </div>
                             </div>
@@ -163,42 +175,128 @@
     </div>
 </div>
 
+<!-- إيصال حراري 80mm للطباعة المباشرة -->
+<div id="thermal-receipt" class="mt-3">
+    <div class="thermal-container">
+        <div class="text-center mb-2">
+            <div class="fw-bold" style="font-size:14px">MOBILE PHONE STORE</div>
+            <div style="font-size:12px">متجر الهواتف</div>
+            <div style="font-size:10px">Algiers, Algeria</div>
+            <div style="font-size:10px">Tel: +213 123 456 789</div>
+        </div>
+
+        <div class="d-flex justify-content-between" style="font-size:11px">
+            <div>Receipt: {{ ("%06d" % sale.id)|english_numbers }}</div>
+            <div>{{ sale.created_at.strftime('%Y-%m-%d %H:%M')|english_numbers }}</div>
+        </div>
+
+        {% if sale.customer %}
+        <div class="mt-1" style="font-size:11px">
+            العميل: {{ sale.customer.name }}
+            {% if sale.customer.phone %} - {{ sale.customer.phone|english_numbers }}{% endif %}
+        </div>
+        {% endif %}
+
+        <hr class="my-1" />
+
+        <div class="items" style="font-size:11px">
+            <div class="d-flex fw-bold">
+                <div style="width:48%">المنتج</div>
+                <div style="width:12%" class="text-center">الكمية</div>
+                <div style="width:20%" class="text-end">السعر</div>
+                <div style="width:20%" class="text-end">الإجمالي</div>
+            </div>
+            <div style="border-top:1px solid #000; margin:2px 0"></div>
+            {% for item in sale.sale_items %}
+            <div class="d-flex">
+                <div style="width:48%">{{ item.product.name }}</div>
+                <div style="width:12%" class="text-center">{{ item.quantity }}</div>
+                <div style="width:20%" class="text-end">{{ item.unit_price|currency }}</div>
+                <div style="width:20%" class="text-end">{{ item.total_price|currency }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="border-top:1px dashed #000; margin:4px 0"></div>
+
+        <div class="totals" style="font-size:12px">
+            <div class="d-flex justify-content-between">
+                <div>المجموع الفرعي</div>
+                <div>{{ sale.total_amount|currency }}</div>
+            </div>
+            {% if sale.discount > 0 %}
+            <div class="d-flex justify-content-between">
+                <div>الخصم</div>
+                <div>- {{ sale.discount|currency }}</div>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between fw-bold" style="font-size:13px">
+                <div>الإجمالي</div>
+                <div>{{ sale.final_amount|currency }}</div>
+            </div>
+            <div class="text-center mt-1" style="font-size:11px">طريقة الدفع: {{ sale.payment_method }}</div>
+        </div>
+
+        {% if sale.notes %}
+        <div class="mt-1" style="font-size:10px">ملاحظات: {{ sale.notes }}</div>
+        {% endif %}
+
+        <div class="text-center mt-2" style="font-size:11px">
+            شكراً لتعاملكم معنا
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_css %}
 <style>
     @media print {
 
-        .btn,
-        .card-header .row .col-md-4,
-        nav,
-        .main-content .row:first-child {
+        /* وضع الطباعة الحرارية */
+        body.thermal-print nav,
+        body.thermal-print .btn,
+        body.thermal-print .main-content .row:first-child,
+        body.thermal-print #invoice {
             display: none !important;
         }
 
-        .card {
-            border: none !important;
-            box-shadow: none !important;
+        body.thermal-print #thermal-receipt {
+            display: block !important;
         }
 
-        .card-header {
-            background-color: #007bff !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
+        @page {
+            size: 80mm auto;
+            margin: 4mm 3mm;
         }
 
         body {
             background: white !important;
         }
+    }
 
-        .table-bordered {
-            border: 1px solid #000 !important;
-        }
+    /* افتراضي: إخفاء الإيصال الحراري في العرض العادي */
+    #thermal-receipt {
+        display: none;
+    }
 
-        .table-bordered th,
-        .table-bordered td {
-            border: 1px solid #000 !important;
-        }
+    .thermal-container {
+        width: 80mm;
+        margin: 0 auto;
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function printThermal() {
+        document.body.classList.add('thermal-print');
+        setTimeout(function () {
+            window.print();
+        }, 50);
+        window.onafterprint = function () {
+            document.body.classList.remove('thermal-print');
+        };
+    }
+</script>
 {% endblock %}

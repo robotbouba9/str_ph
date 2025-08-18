@@ -125,10 +125,10 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="format-number">{{ "{:,.0f}".format(product.price_buy) }}</span> جنيه
+                            {{ product.price_buy|currency }}
                         </td>
                         <td>
-                            <span class="format-number">{{ "{:,.0f}".format(product.price_sell) }}</span> جنيه
+                            {{ product.price_sell|currency }}
                         </td>
                         <td>
                             {% if product.quantity <= product.min_quantity %} <span class="badge bg-danger">{{
@@ -418,7 +418,7 @@
                         </small>
                     </div>
                     <div class="text-end">
-                        <div class="fw-bold text-primary">${parseFloat(product.price_sell).toLocaleString('en-US')} جنيه</div>
+                        <div class="fw-bold text-primary">${parseFloat(product.price_sell).toLocaleString('en-US')} د.ج</div>
                         <small class="text-muted">الكمية: ${product.quantity}</small>
                     </div>
                 </div>

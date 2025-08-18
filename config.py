@@ -41,12 +41,12 @@ class Config:
     AUTO_BACKUP = False
     BACKUP_INTERVAL_HOURS = 24
     
-    # إعدادات العملة
-    CURRENCY = "جنيه"
-    CURRENCY_SYMBOL = "ج.م"
+    # إعدادات العملة (دينار جزائري)
+    CURRENCY = "دينار جزائري"
+    CURRENCY_SYMBOL = "د.ج"
     
     # إعدادات التاريخ والوقت
-    TIMEZONE = 'Africa/Cairo'
+    TIMEZONE = 'Africa/Algiers'
     DATE_FORMAT = '%Y-%m-%d'
     TIME_FORMAT = '%H:%M:%S'
     DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'

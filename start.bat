@@ -1,35 +1,54 @@
 @echo off
-chcp 65001 > nul
-title برنامج إدارة مخزون محل الهواتف المحسن
-
-echo.
 echo ========================================
-echo    برنامج إدارة مخزون محل الهواتف المحسن
+echo    متجر الهواتف - Phone Store System
 echo ========================================
 echo.
-echo 🚀 بدء تشغيل البرنامج...
+echo اختر ما تريد تشغيله:
+echo 1. تطبيق الويب (Web Application)
+echo 2. بوت التليجرام (Telegram Bot)
+echo 3. كلاهما (Both)
+echo 4. تثبيت المتطلبات (Install Requirements)
+echo 5. خروج (Exit)
 echo.
+set /p choice="اختر رقم (1-5): "
 
-cd /d "%~dp0"
+if "%choice%"=="1" goto web
+if "%choice%"=="2" goto bot
+if "%choice%"=="3" goto both
+if "%choice%"=="4" goto install
+if "%choice%"=="5" goto exit
 
-if not exist "venv" (
-    echo 📦 إنشاء البيئة الافتراضية...
-    python -m venv venv
-)
+:web
+echo تشغيل تطبيق الويب...
+python run_web.py
+pause
+goto menu
 
-echo 🔧 تفعيل البيئة الافتراضية...
-call venv\Scripts\activate.bat
+:bot
+echo تشغيل بوت التليجرام...
+python run_bot.py
+pause
+goto menu
 
-echo 📋 تثبيت المتطلبات...
-pip install -r requirements.txt > nul 2>&1
+:both
+echo تشغيل كلا التطبيقين...
+start "Web App" python run_web.py
+start "Telegram Bot" python run_bot.py
+echo تم تشغيل التطبيقين في نوافذ منفصلة
+pause
+goto exit
 
-echo.
-echo ✅ جاهز للتشغيل!
-echo.
-echo 🌐 سيتم فتح البرنامج على: http://127.0.0.1:5000
-echo 🔧 للإيقاف: اضغط Ctrl+C
-echo.
+:install
+echo تثبيت المتطلبات...
+pip install -r requirements.txt
+echo تم تثبيت المتطلبات بنجاح!
+pause
+goto menu
 
-python run_enhanced.py
+:menu
+cls
+goto start
 
+:exit
+echo شكراً لاستخدام متجر الهواتف!
 pause

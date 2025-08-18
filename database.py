@@ -10,6 +10,33 @@ import os
 
 db = SQLAlchemy()
 
+class StoreSettings(db.Model):
+    """إعدادات المتجر العامة"""
+    __tablename__ = 'store_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    store_name = db.Column(db.String(200), default='MOBILE PHONE STORE')
+    store_name_ar = db.Column(db.String(200), default='متجر الهواتف')
+    address = db.Column(db.String(300), default='Algiers, Algeria')
+    phone = db.Column(db.String(50), default='+213 123 456 789')
+    email = db.Column(db.String(120))
+    currency_name = db.Column(db.String(50), default='دينار جزائري')
+    currency_symbol = db.Column(db.String(10), default='د.ج')
+    logo_path = db.Column(db.String(300))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'store_name': self.store_name,
+            'store_name_ar': self.store_name_ar,
+            'address': self.address,
+            'phone': self.phone,
+            'email': self.email,
+            'currency_name': self.currency_name,
+            'currency_symbol': self.currency_symbol,
+            'logo_path': self.logo_path,
+        }
+
 class Category(db.Model):
     """جدول الفئات"""
     __tablename__ = 'categories'
@@ -193,6 +220,70 @@ class SaleItem(db.Model):
             'total_price': self.total_price
         }
 
+class PurchaseInvoice(db.Model):
+    """جدول فواتير الشراء من الموردين"""
+    __tablename__ = 'purchase_invoices'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    invoice_number = db.Column(db.String(100), unique=True)  # رقم الفاتورة
+    total_amount = db.Column(db.Float, nullable=False)  # المبلغ الإجمالي
+    discount = db.Column(db.Float, default=0)  # الخصم
+    final_amount = db.Column(db.Float, nullable=False)  # المبلغ النهائي
+    payment_method = db.Column(db.String(50), default='نقدي')  # طريقة الدفع
+    notes = db.Column(db.Text)  # ملاحظات
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # العلاقات
+    supplier = db.relationship('Supplier', backref='purchase_invoices')
+    purchase_items = db.relationship('PurchaseItem', backref='purchase_invoice', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<PurchaseInvoice {self.invoice_number}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'supplier_id': self.supplier_id,
+            'supplier_name': self.supplier.name if self.supplier else '',
+            'invoice_number': self.invoice_number,
+            'total_amount': self.total_amount,
+            'discount': self.discount,
+            'final_amount': self.final_amount,
+            'payment_method': self.payment_method,
+            'notes': self.notes,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else '',
+            'items': [item.to_dict() for item in self.purchase_items]
+        }
+
+class PurchaseItem(db.Model):
+    """جدول عناصر فواتير الشراء"""
+    __tablename__ = 'purchase_items'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_invoice_id = db.Column(db.Integer, db.ForeignKey('purchase_invoices.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)  # الكمية المشتراة
+    unit_price = db.Column(db.Float, nullable=False)  # سعر الوحدة
+    total_price = db.Column(db.Float, nullable=False)  # السعر الإجمالي
+    
+    # العلاقات
+    product = db.relationship('Product', backref='purchase_items')
+    
+    def __repr__(self):
+        return f'<PurchaseItem {self.id}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'purchase_invoice_id': self.purchase_invoice_id,
+            'product_id': self.product_id,
+            'product_name': self.product.name if self.product else '',
+            'quantity': self.quantity,
+            'unit_price': self.unit_price,
+            'total_price': self.total_price
+        }
+
 def init_database(app):
     """تهيئة قاعدة البيانات"""
     db.init_app(app)
@@ -201,6 +292,12 @@ def init_database(app):
         # إنشاء الجداول
         db.create_all()
         
+        # إنشاء سجل إعدادات افتراضي إن لم يوجد
+        if not StoreSettings.query.first():
+            settings = StoreSettings()
+            db.session.add(settings)
+            db.session.commit()
+
         # إضافة بيانات تجريبية إذا كانت قاعدة البيانات فارغة
         if not Supplier.query.first():
             add_sample_data()

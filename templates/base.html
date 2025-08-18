@@ -176,7 +176,7 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-mobile-alt me-2"></i>
-                إدارة مخزون الهواتف
+                {{ settings.store_name_ar if settings and settings.store_name_ar else 'إدارة مخزون الهواتف' }}
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -232,22 +232,42 @@
                             الموردين
                         </a>
 
-                        <a class="nav-link {% if request.endpoint in ['sales', 'new_sale', 'view_sale'] %}active{% endif %}"
+                        <a class="nav-link {% if request.endpoint in ['sales', 'view_sale'] %}active{% endif %}"
                             href="{{ url_for('sales') }}">
                             <i class="fas fa-shopping-cart"></i>
                             المبيعات
                         </a>
 
-                        <a class="nav-link {% if request.endpoint == 'new_sale' %}active{% endif %}"
-                            href="{{ url_for('new_sale') }}">
-                            <i class="fas fa-plus-circle"></i>
-                            فاتورة جديدة
+
+
+                        <a class="nav-link {% if request.endpoint in ['purchases', 'new_purchase', 'view_purchase'] %}active{% endif %}"
+                            href="{{ url_for('purchases') }}">
+                            <i class="fas fa-receipt"></i>
+                            فواتير الشراء
+                        </a>
+
+                        <a class="nav-link {% if request.endpoint == 'new_purchase' %}active{% endif %}"
+                            href="{{ url_for('new_purchase') }}">
+                            <i class="fas fa-plus-square"></i>
+                            فاتورة شراء جديدة
                         </a>
 
                         <a class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}"
                             href="{{ url_for('reports') }}">
                             <i class="fas fa-chart-bar"></i>
-                            التقارير
+                            التقارير الأساسية
+                        </a>
+
+                        <a class="nav-link {% if request.endpoint == 'advanced_reports' %}active{% endif %}"
+                            href="{{ url_for('advanced_reports') }}">
+                            <i class="fas fa-chart-line"></i>
+                            التقارير المتقدمة
+                        </a>
+
+                        <a class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}"
+                            href="{{ url_for('settings_page') }}">
+                            <i class="fas fa-gear"></i>
+                            إعدادات المتجر
                         </a>
                     </nav>
                 </div>
@@ -286,7 +306,7 @@
         // تحديث الوقت الحالي
         function updateTime() {
             const now = new Date();
-            const timeString = now.toLocaleString('ar-EG', {
+            const timeString = now.toLocaleString('en-US', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -308,7 +328,7 @@
 
         // تنسيق الأرقام
         function formatNumber(num) {
-            return new Intl.NumberFormat('ar-EG').format(num);
+            return new Intl.NumberFormat('en-US').format(num);
         }
 
         // تطبيق تنسيق الأرقام على العناصر
