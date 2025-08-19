@@ -28,47 +28,42 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="POST" id="productForm">
+                <form method="POST" id="productForm" enctype="multipart/form-data">
+                    {{ form.csrf_token }}
                     <div class="row">
                         <!-- المعلومات الأساسية -->
                         <div class="col-md-6 mb-3">
                             <label for="name" class="form-label">اسم المنتج <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name" required
-                                placeholder="مثال: iPhone 15 Pro Max">
+                            {{ form.name(class="form-control", placeholder="مثال: iPhone 15 Pro Max") }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{% for error in form.name.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="brand" class="form-label">الماركة <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="brand" name="brand" required
-                                placeholder="مثال: Apple" list="brandsList">
-                            <datalist id="brandsList">
-                                <option value="Apple">
-                                <option value="Samsung">
-                                <option value="Xiaomi">
-                                <option value="Huawei">
-                                <option value="Oppo">
-                                <option value="Vivo">
-                                <option value="OnePlus">
-                                <option value="Realme">
-                                <option value="Nokia">
-                                <option value="Sony">
-                            </datalist>
+                            <label for="brand_id" class="form-label">الماركة <span class="text-danger">*</span></label>
+                            {{ form.brand_id(class="form-select") }}
+                            {% if form.brand_id.errors %}
+                                <div class="text-danger">{% for error in form.brand_id.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
+
+
 
                         <div class="col-md-6 mb-3">
                             <label for="model" class="form-label">الموديل <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="model" name="model" required
-                                placeholder="مثال: iPhone 15 Pro Max">
+                            {{ form.model(class="form-control", placeholder="مثال: iPhone 15 Pro Max") }}
+                            {% if form.model.errors %}
+                                <div class="text-danger">{% for error in form.model.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="category_id" class="form-label">الفئة <span class="text-danger">*</span></label>
-                            <select class="form-select" id="category_id" name="category_id" required>
-                                <option value="">اختر الفئة</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}">{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
+                            {{ form.category_id(class="form-select") }}
+                            {% if form.category_id.errors %}
+                                <div class="text-danger">{% for error in form.category_id.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                             <div class="form-text">
                                 <a href="{{ url_for('add_category') }}" target="_blank" class="text-decoration-none">
                                     <i class="fas fa-plus me-1"></i>إضافة فئة جديدة
@@ -78,21 +73,43 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="color" class="form-label">اللون</label>
-                            <input type="text" class="form-control" id="color" name="color"
-                                placeholder="مثال: أزرق تيتانيوم">
+                            {{ form.color(class="form-control", placeholder="مثال: أزرق تيتانيوم") }}
+                            {% if form.color.errors %}
+                                <div class="text-danger">{% for error in form.color.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-12 mb-3">
                             <label for="description" class="form-label">وصف المنتج ومواصفاته</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"
-                                placeholder="مثال: شاشة 6.1 بوصة Super Retina XDR، معالج A17 Pro، كاميرا ثلاثية 48MP، ذاكرة 256GB، مقاوم للماء IP68"></textarea>
+                            {{ form.description(class="form-control", rows="3", placeholder="مثال: شاشة 6.1 بوصة Super Retina XDR، معالج A17 Pro، كاميرا ثلاثية 48MP، ذاكرة 256GB، مقاوم للماء IP68") }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{% for error in form.description.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                             <div class="form-text">اكتب وصفاً مفصلاً للمنتج ومواصفاته التقنية</div>
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="barcode" class="form-label">الباركود</label>
-                            <input type="text" class="form-control" id="barcode" name="barcode"
-                                placeholder="رقم الباركود">
+                            {{ form.barcode(class="form-control", placeholder="رقم الباركود") }}
+                            {% if form.barcode.errors %}
+                                <div class="text-danger">{% for error in form.barcode.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="imei" class="form-label">رقم IMEI</label>
+                            {{ form.imei(class="form-control", placeholder="رقم IMEI (اختياري)") }}
+                            {% if form.imei.errors %}
+                                <div class="text-danger">{% for error in form.imei.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="warranty_period" class="form-label">مدة الضمان بالأيام</label>
+                            {{ form.warranty_period(class="form-control", placeholder="مثال: 365 (يوم)") }}
+                            {% if form.warranty_period.errors %}
+                                <div class="text-danger">{% for error in form.warranty_period.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -101,41 +118,47 @@
                     <div class="row">
                         <!-- الأسعار والكميات -->
                         <div class="col-md-6 mb-3">
-                            <label for="price_buy" class="form-label">سعر الشراء (جنيه) <span
+                            <label for="price" class="form-label">سعر الشراء (د.ج) <span
                                     class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="price_buy" name="price_buy" step="0.01"
-                                min="0" required placeholder="0.00">
+                            {{ form.price(class="form-control", step="0.01", min="0", placeholder="0.00") }}
+                            {% if form.price.errors %}
+                                <div class="text-danger">{% for error in form.price.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="price_sell" class="form-label">سعر البيع (جنيه) <span
+                            <label for="stock" class="form-label">سعر البيع (د.ج) <span
                                     class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="price_sell" name="price_sell" step="0.01"
-                                min="0" required placeholder="0.00">
+                            {{ form.stock(class="form-control", min="0", placeholder="0") }}
+                            {% if form.stock.errors %}
+                                <div class="text-danger">{% for error in form.stock.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="quantity" class="form-label">الكمية المتوفرة <span
+                            <label for="min_quantity" class="form-label">الكمية المتوفرة <span
                                     class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" min="0" required
-                                placeholder="0">
+                            {{ form.min_quantity(class="form-control", min="0", placeholder="5") }}
+                            {% if form.min_quantity.errors %}
+                                <div class="text-danger">{% for error in form.min_quantity.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="min_quantity" class="form-label">الحد الأدنى للكمية</label>
-                            <input type="number" class="form-control" id="min_quantity" name="min_quantity" min="0"
-                                value="5" placeholder="5">
+                            <label for="image" class="form-label">صورة المنتج</label>
+                            {{ form.image(class="form-control") }}
+                            {% if form.image.errors %}
+                                <div class="text-danger">{% for error in form.image.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                             <div class="form-text">سيتم تنبيهك عند وصول الكمية لهذا الحد</div>
                         </div>
 
                         <div class="col-md-12 mb-3">
                             <label for="supplier_id" class="form-label">المورد</label>
-                            <select class="form-select" id="supplier_id" name="supplier_id">
-                                <option value="">اختر المورد</option>
-                                {% for supplier in suppliers %}
-                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
-                                {% endfor %}
-                            </select>
+                            {{ form.supplier_id(class="form-select") }}
+                            {% if form.supplier_id.errors %}
+                                <div class="text-danger">{% for error in form.supplier_id.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -209,6 +232,43 @@
     </div>
 </div>
 
+<!-- Modal: إدارة الماركات -->
+<div class="modal fade" id="manageBrandsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-tags me-2"></i>إدارة الماركات</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">إضافة ماركة جديدة</label>
+                    <div class="input-group">
+                        <input type="text" id="newBrandName" class="form-control" placeholder="مثال: Apple">
+                        <button class="btn btn-primary" type="button" id="addBrandBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <ul class="list-group" id="brandsList">
+                    {% for b in brands %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ b }}</span>
+                        <button class="btn btn-sm btn-outline-danger remove-brand" data-name="{{ b }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -247,7 +307,7 @@
                 ${priceSell ? `
                 <div class="row text-center mb-2">
                     <div class="col-12">
-                        <h5 class="text-primary mb-0">${parseFloat(priceSell).toLocaleString('en-US')} جنيه</h5>
+                        <h5 class="text-primary mb-0">${parseFloat(priceSell).toLocaleString('en-US')} د.ج</h5>
                         <small class="text-muted">سعر البيع</small>
                     </div>
                 </div>
@@ -255,7 +315,7 @@
                 
                 ${profit > 0 ? `
                 <div class="alert alert-success py-2 mb-2">
-                    <small>الربح: ${profit.toLocaleString('en-US')} جنيه (${profitPercent}%)</small>
+                    <small>الربح: ${profit.toLocaleString('en-US')} د.ج (${profitPercent}%)</small>
                 </div>
                 ` : ''}
                 
@@ -294,6 +354,39 @@
             const suggestedPrice = (priceBuy * 1.3).toFixed(2);
             priceSellInput.value = suggestedPrice;
             updatePreview();
+        }
+    });
+
+    // إدارة الماركات (واجهة أمامية بسيطة)
+    document.getElementById('addBrandBtn').addEventListener('click', function () {
+        const input = document.getElementById('newBrandName');
+        const name = (input.value || '').trim();
+        if (!name) return;
+        // أضف للّائحة في المودال
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `<span>${name}</span><button class="btn btn-sm btn-outline-danger remove-brand" data-name="${name}"><i class="fas fa-trash"></i></button>`;
+        document.getElementById('brandsList').appendChild(li);
+        // أضف لقائمة الاختيار الرئيسية
+        const select = document.getElementById('brand');
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        select.appendChild(opt);
+        select.value = name;
+        input.value = '';
+    });
+
+    document.getElementById('brandsList').addEventListener('click', function (e) {
+        if (e.target.closest('.remove-brand')) {
+            const btn = e.target.closest('.remove-brand');
+            const name = btn.getAttribute('data-name');
+            // احذف من القائمة
+            btn.parentElement.remove();
+            // احذف من select إن وجد
+            const select = document.getElementById('brand');
+            [...select.options].forEach(o => { if (o.value === name) o.remove(); });
+            // إذا كانت القيمة المحذوفة مختارة، أعد الضبط
+            if (select.value === name) select.value = '';
         }
     });
 

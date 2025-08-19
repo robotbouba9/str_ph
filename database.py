@@ -10,6 +10,20 @@ import os
 
 db = SQLAlchemy()
 
+class User(db.Model):
+    """مستخدمو النظام وأدوارهم"""
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), default='cashier')  # admin, cashier, inventory
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
 class StoreSettings(db.Model):
     """إعدادات المتجر العامة"""
     __tablename__ = 'store_settings'
@@ -61,6 +75,24 @@ class Category(db.Model):
             'products_count': len(self.products)
         }
 
+class Brand(db.Model):
+    """جدول الماركات"""
+    __tablename__ = 'brands'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Brand {self.name}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else ''
+        }
+
 class Product(db.Model):
     """جدول المنتجات"""
     __tablename__ = 'products'
@@ -76,6 +108,8 @@ class Product(db.Model):
     quantity = db.Column(db.Integer, default=0)  # الكمية المتوفرة
     min_quantity = db.Column(db.Integer, default=5)  # الحد الأدنى للكمية
     barcode = db.Column(db.String(100), unique=True)  # الباركود
+    imei = db.Column(db.String(100), unique=True, nullable=True) # رقم IMEI
+    warranty_period = db.Column(db.Integer, default=0) # مدة الضمان بالأيام
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))  # الفئة
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -101,6 +135,8 @@ class Product(db.Model):
             'quantity': self.quantity,
             'min_quantity': self.min_quantity,
             'barcode': self.barcode,
+            'imei': self.imei,
+            'warranty_period': self.warranty_period,
             'category_id': self.category_id,
             'category_name': self.category.name if self.category else '',
             'supplier_id': self.supplier_id,
@@ -180,20 +216,66 @@ class Sale(db.Model):
     
     def __repr__(self):
         return f'<Sale {self.id}>'
-    
+
+class Return(db.Model):
+    """جدول المرتجعات"""
+    __tablename__ = 'returns'
+
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False) # المبيعة الأصلية
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id')) # العميل الذي قام بالارجاع
+    return_date = db.Column(db.DateTime, default=datetime.utcnow) # تاريخ الارجاع
+    total_amount = db.Column(db.Float, nullable=False) # المبلغ الإجمالي للمرتجع
+    reason = db.Column(db.Text) # سبب الارجاع
+    notes = db.Column(db.Text) # ملاحظات إضافية
+
+    # العلاقات
+    sale = db.relationship('Sale', backref='returns')
+    customer = db.relationship('Customer', backref='returns')
+    return_items = db.relationship('ReturnItem', backref='return', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Return {self.id}>'
+
     def to_dict(self):
         return {
             'id': self.id,
+            'sale_id': self.sale_id,
             'customer_id': self.customer_id,
-            'customer_name': self.customer.name if self.customer else 'عميل غير محدد',
+            'customer_name': self.customer.name if self.customer else 'N/A',
+            'return_date': self.return_date.strftime('%Y-%m-%d %H:%M:%S') if self.return_date else '',
             'total_amount': self.total_amount,
-            'discount': self.discount,
-            'final_amount': self.final_amount,
-            'payment_method': self.payment_method,
-            'notes': self.notes,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else '',
-            'items': [item.to_dict() for item in self.sale_items]
+            'reason': self.reason,
+            'notes': self.notes
         }
+
+class ReturnItem(db.Model):
+    """تفاصيل المنتجات المرتجعة"""
+    __tablename__ = 'return_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    return_id = db.Column(db.Integer, db.ForeignKey('returns.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False) # الكمية المرتجعة
+    price = db.Column(db.Float, nullable=False) # سعر الوحدة وقت الارجاع
+
+    # العلاقات
+    product = db.relationship('Product', backref='return_items')
+
+    def __repr__(self):
+        return f'<ReturnItem {self.id} - Product {self.product_id}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'return_id': self.return_id,
+            'product_id': self.product_id,
+            'product_name': self.product.name if self.product else 'N/A',
+            'quantity': self.quantity,
+            'price': self.price
+        }
+    
+
 
 class SaleItem(db.Model):
     """جدول عناصر المبيعات"""

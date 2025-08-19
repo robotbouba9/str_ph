@@ -15,7 +15,7 @@ def create_test_data():
     
     try:
         from app import app
-        from database import db, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem
+        from database import db, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, Return, ReturnItem
         
         with app.app_context():
             # إنشاء الجداول إذا لم تكن موجودة
@@ -119,12 +119,43 @@ def create_test_data():
             final_products = Product.query.count()
             final_sales = Sale.query.count()
             final_purchases = PurchaseInvoice.query.count()
+            final_returns = Return.query.count()
             
+            # إنشاء مرتجع تجريبي إذا كانت هناك مبيعات ومنتجات
+            if existing_sales > 0 and final_products > 0 and final_returns == 0:
+                print("↩️ إنشاء مرتجع تجريبي...")
+                sample_sale = Sale.query.first()
+                sample_product = Product.query.first()
+                
+                if sample_sale and sample_product:
+                    new_return = Return(
+                        sale_id=sample_sale.id,
+                        customer_id=sample_sale.customer_id,
+                        total_amount=sample_product.price_sell,
+                        reason="منتج تالف",
+                        notes="مرتجع تجريبي من البيانات"
+                    )
+                    db.session.add(new_return)
+                    db.session.commit()
+                    
+                    return_item = ReturnItem(
+                        return_id=new_return.id,
+                        product_id=sample_product.id,
+                        quantity=1,
+                        price=sample_product.price_sell
+                    )
+                    db.session.add(return_item)
+                    db.session.commit()
+                    print("✅ تم إنشاء مرتجع تجريبي")
+                else:
+                    print("⚠️ لا توجد مبيعات أو منتجات لإنشاء مرتجع تجريبي.")
+
             print()
             print("📊 الإحصائيات النهائية:")
             print(f"   📦 المنتجات: {final_products}")
             print(f"   🧾 المبيعات: {final_sales}")
             print(f"   📋 المشتريات: {final_purchases}")
+            print(f"   ↩️ المرتجعات: {final_returns}")
             
             # إزالة اختبارات الطباعة الحرارية بعد الاستغناء عنها
             

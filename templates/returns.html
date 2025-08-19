@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+
+{% block title %}المرتجعات - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-undo me-2"></i>
+            إدارة المرتجعات
+        </h1>
+        <p class="text-muted">عرض وإدارة جميع المرتجعات في النظام</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="#addReturnModal" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReturnModal">
+            <i class="fas fa-plus me-2"></i>
+            إضافة مرتجع جديد
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة المرتجعات
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="returnsTable">
+                <thead>
+                    <tr>
+                        <th>رقم المرتجع</th>
+                        <th>رقم الفاتورة الأصلية</th>
+                        <th>العميل</th>
+                        <th>تاريخ الارجاع</th>
+                        <th>المبلغ الإجمالي</th>
+                        <th>السبب</th>
+                        <th>ملاحظات</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for return in returns %}
+                    <tr>
+                        <td><strong>#{{ return.id }}</strong></td>
+                        <td>{{ return.sale_id }}</td>
+                        <td>{{ return.customer_name }}</td>
+                        <td>{{ return.return_date }}</td>
+                        <td><strong class="text-success">{{ return.total_amount }}</strong></td>
+                        <td>{{ return.reason }}</td>
+                        <td>{{ return.notes }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_return', return_id=return.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="عرض">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger delete-return-btn"
+                                    data-id="{{ return.id }}" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if not returns %}
+        <div class="text-center py-5">
+            <i class="fas fa-undo fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد مرتجعات</h5>
+            <p class="text-muted">لم يتم تسجيل أي مرتجعات بعد</p>
+            <a href="#addReturnModal" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReturnModal">
+                <i class="fas fa-plus me-2"></i>
+                إضافة أول مرتجع
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Return Modal -->
+<div class="modal fade" id="addReturnModal" tabindex="-1" role="dialog" aria-labelledby="addReturnModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addReturnModalLabel">إضافة مرتجع جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addReturnForm" method="POST" action="{{ url_for('add_return') }}">
+                    {{ form.csrf_token }}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.sale_id.label(class="form-label") }}
+                            {{ form.sale_id(class="form-control", value=sale_id_prefill or '') }}
+                            {% if form.sale_id.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.sale_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.customer_id.label(class="form-label") }}
+                            {{ form.customer_id(class="form-select") }}
+                            {% if form.customer_id.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.customer_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">يمكنك أيضاً فتح المرتجعات من صفحة الفاتورة وسيتم تعبئة رقمها
+                                تلقائياً.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.total_amount.label(class="form-label") }}
+                        {{ form.total_amount(class="form-control") }}
+                        {% if form.total_amount.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.total_amount.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">سيتم احتساب الإجمالي تلقائياً من العناصر.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.reason.label(class="form-label") }}
+                        {{ form.reason(class="form-control", rows="2") }}
+                        {% if form.reason.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.reason.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="2") }}
+                        {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notes.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">المنتجات المرتجعة:</label>
+                        <div id="return_items_container">
+                            <div class="row mb-2 align-items-center">
+                                <div class="col-md-5">
+                                    <select class="form-select product-select" name="product_id[]" required>
+                                        <option value="">اختر منتج</option>
+                                        {% for product in products %}
+                                        <option value="{{ product.id }}">{{ product.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" class="form-control quantity-input" name="quantity[]"
+                                        placeholder="الكمية" required min="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" class="form-control price-input" name="price[]"
+                                        placeholder="السعر" required min="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-primary add-item-btn w-100">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ المرتجع</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Return Modal (for viewing return details) -->
+<div class="modal fade" id="viewReturnModal" tabindex="-1" role="dialog" aria-labelledby="viewReturnModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewReturnModalLabel">تفاصيل المرتجع</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewReturnBody">
+                <!-- Return details will be loaded here via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    $(document).ready(function () {
+        // Add new return item row
+        $(document).on('click', '.add-item-btn', function () {
+            var newItem = `
+                <div class="row mb-2 align-items-center">
+                    <div class="col-md-5">
+                        <select class="form-select product-select" name="product_id[]" required>
+                            <option value="">اختر منتج</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control quantity-input" name="quantity[]" placeholder="الكمية" required min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" step="0.01" class="form-control price-input" name="price[]" placeholder="السعر" required min="0.01">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger remove-item-btn w-100">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            $('#return_items_container').append(newItem);
+        });
+
+        // Remove return item row
+        $(document).on('click', '.remove-item-btn', function () {
+            $(this).closest('.row').remove();
+        });
+
+        // Handle form submission for adding a new return
+        $('#addReturnForm').on('submit', function (e) {
+            e.preventDefault();
+
+            // تعبئة تلقائية من الفاتورة عند إدخال رقم فاتورة
+            const saleId = $('#sale_id').val().trim();
+            if (saleId) {
+                // لا شيء هنا، سيتم التعامل مع الاستدعاء عند تغيير الحقل
+            }
+
+            // Validación básica
+            if ($('.product-select').length === 0) {
+                alert('يجب إضافة منتج واحد على الأقل');
+                return;
+            }
+
+            let isValid = true;
+            $('.product-select').each(function () {
+                if (!$(this).val()) {
+                    isValid = false;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+
+            if (!isValid) {
+                alert('يرجى اختيار جميع المنتجات المطلوبة');
+                return;
+            }
+
+            $.ajax({
+                url: $(this).attr('action'),
+                method: $(this).attr('method'),
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function (response) {
+                    if (response && response.success) {
+                        // إظهار Toast نجاح واضح
+                        const toast = `
+                            <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1200">
+                                <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                                    <div class="toast-header bg-success text-white">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong class="me-auto">نجاح</strong>
+                                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                                    </div>
+                                    <div class="toast-body">
+                                        ${response.message || 'تم إضافة المرتجع بنجاح!'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('body').append(toast);
+                        setTimeout(function () {
+                            $('.toast').toast('hide');
+                            $('#addReturnModal').modal('hide');
+                            window.location.href = '/returns';
+                        }, 1200);
+                    } else {
+                        alert('خطأ: ' + (response && response.message ? response.message : 'فشل غير معروف'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    let msg = 'حدث خطأ أثناء إضافة المرتجع';
+                    try { const j = JSON.parse(xhr.responseText); if (j.message) msg = j.message; } catch (e) { }
+                    alert(msg);
+                }
+            });
+        });
+
+        // Auto-fill items when sale_id changes
+        $('#sale_id').on('change', function () {
+            const saleId = $(this).val().trim();
+            if (!saleId) return;
+            $.getJSON(`/api/sales/${saleId}/returnable-items`, function (res) {
+                if (!res.success) {
+                    alert(res.message || 'لا يمكن جلب بيانات الفاتورة');
+                    return;
+                }
+                const data = res.data;
+                // Fill customer if exists
+                if (data.customer_id) {
+                    $('#customer_id').val(data.customer_id);
+                }
+                // Clear existing rows
+                $('#return_items_container').empty();
+                // Build rows from items
+                data.items.forEach(function (it, idx) {
+                    const row = `
+                        <div class="row mb-2 align-items-center">
+                            <div class="col-md-5">
+                                <select class="form-select product-select" name="product_id[]" required>
+                                    <option value="${it.product_id}" selected>${it.product_name}</option>
+                                </select>
+                                <div class="form-text">المسموح: ${it.allowed_qty} من ${it.sold_qty} (تم إرجاع ${it.already_returned})</div>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" class="form-control quantity-input" name="quantity[]" placeholder="الكمية" min="1" max="${it.allowed_qty}" value="${it.allowed_qty}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" step="0.01" class="form-control price-input" name="price[]" placeholder="السعر" min="0.01" value="${it.unit_price}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger remove-item-btn w-100">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                    $('#return_items_container').append(row);
+                });
+                recalcTotal();
+            }).fail(function (xhr) {
+                alert('تعذر جلب بيانات الفاتورة');
+            });
+        });
+
+        // Recalculate total on quantity/price change
+        function recalcTotal() {
+            let total = 0;
+            $('.quantity-input').each(function (i) {
+                const qty = parseFloat($(this).val()) || 0;
+                const price = parseFloat($('.price-input').eq(i).val()) || 0;
+                total += qty * price;
+            });
+            $('#total_amount').val(total.toFixed(2));
+        }
+        $(document).on('input', '.quantity-input, .price-input', recalcTotal);
+
+        // Handle view return button click
+        $(document).on('click', '.btn-outline-primary', function (e) {
+            e.preventDefault();
+            var returnId = $(this).attr('href').split('/').pop();
+
+            // Mostrar indicador de carga
+            $('#viewReturnBody').html(`
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">جاري التحميل...</span>
+                    </div>
+                    <p class="mt-2">جاري تحميل بيانات المرتجع...</p>
+                </div>
+            `);
+
+            // Mostrar el modal inmediatamente con el indicador de carga
+            var returnModal = new bootstrap.Modal(document.getElementById('viewReturnModal'));
+            returnModal.show();
+
+            // Cargar los datos
+            $.ajax({
+                url: '/returns/' + returnId,
+                method: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        var returnData = response.return_data;
+                        var itemsHtml = '<div class="mt-4"><h5 class="mb-3">المنتجات المرتجعة:</h5><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>';
+
+                        if (returnData.return_items && returnData.return_items.length > 0) {
+                            returnData.return_items.forEach(function (item) {
+                                itemsHtml += `<tr>
+                                    <td>${item.product_name}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${item.price}</td>
+                                    <td>${item.total}</td>
+                                </tr>`;
+                            });
+                        } else {
+                            itemsHtml += '<tr><td colspan="4" class="text-center">لا توجد منتجات مرتجعة</td></tr>';
+                        }
+
+                        itemsHtml += '</tbody></table></div></div>';
+
+                        $('#viewReturnBody').html(`
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="fw-bold">رقم المرتجع:</label>
+                                        <p>#${returnData.id}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="fw-bold">رقم الفاتورة الأصلية:</label>
+                                        <p>#${returnData.sale_id}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="fw-bold">العميل:</label>
+                                        <p>${returnData.customer_name || 'غير محدد'}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="fw-bold">تاريخ الارجاع:</label>
+                                        <p>${returnData.return_date}</p>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="fw-bold">المبلغ الإجمالي:</label>
+                                        <p class="text-success fw-bold">${returnData.total_amount}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="fw-bold">سبب الارجاع:</label>
+                                        <p>${returnData.reason || 'لا يوجد'}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="fw-bold">ملاحظات:</label>
+                                        <p>${returnData.notes || 'لا يوجد'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${itemsHtml}
+                        `);
+                    } else {
+                        alert('خطأ: ' + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert('حدث خطأ أثناء جلب تفاصيل المرتجع: ' + xhr.responseText);
+                }
+            });
+        });
+
+        // Handle delete return button click
+        $(document).on('click', '.delete-return-btn', function () {
+            var returnId = $(this).data('id');
+            if (confirm('هل أنت متأكد أنك تريد حذف هذا المرتجع؟')) {
+                $.ajax({
+                    url: '/returns/delete/' + returnId,
+                    method: 'POST',
+                    success: function (response) {
+                        if (response.success) {
+                            // Mostrar mensaje de éxito
+                            const toast = `
+                                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                                        <div class="toast-header bg-success text-white">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            <strong class="me-auto">نجاح</strong>
+                                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                                        </div>
+                                        <div class="toast-body">
+                                            تم حذف المرتجع بنجاح!
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            $('body').append(toast);
+                            setTimeout(function () {
+                                $('.toast').toast('hide');
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alert('خطأ: ' + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert('حدث خطأ أثناء حذف المرتجع: ' + xhr.responseText);
+                    }
+                });
+            }
+        });
+
+        // Inicializar tooltips de Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

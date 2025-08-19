@@ -4,16 +4,21 @@
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, make_response, send_file
-from database import db, init_database, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, StoreSettings
+from database import db, init_database, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, StoreSettings, Brand, Return, ReturnItem, User
 from datetime import datetime, timedelta
 from excel_export import ExcelExporter
 from dotenv import load_dotenv
 import os
 from io import BytesIO
+from flask_wtf import CSRFProtect
+from forms import LoginForm, UserForm, ProductForm, CustomerForm, SupplierForm, CategoryForm, BrandForm, StoreSettingsForm, ReturnForm
 
 # إعداد التطبيق
 load_dotenv()
 app = Flask(__name__)
+csrf = CSRFProtect(app)
+# Ensure JSON responses keep Arabic characters (no ASCII escaping)
+app.config['JSON_AS_ASCII'] = False
 
 # محاولة استيراد الإعدادات، وإذا فشلت استخدم الإعدادات الافتراضية
 try:
@@ -29,7 +34,102 @@ except ImportError:
 # تهيئة قاعدة البيانات
 init_database(app)
 
+# ==================== فلاتر Jinja2 ====================
+@app.template_filter('english_numbers')
+def english_numbers(value):
+    """تحويل الأرقام الهندية العربية إلى أرقام إنجليزية"""
+    try:
+        s = str(value)
+        return s.translate(str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789'))
+    except Exception:
+        return str(value)
+
+@app.template_filter('currency')
+def currency(value):
+    """تنسيق العملة مع الفاصلة العشرية والرمز"""
+    try:
+        num = float(value or 0)
+    except (ValueError, TypeError):
+        num = 0.0
+    symbol = 'د.ج'
+    try:
+        settings = StoreSettings.query.first()
+        if settings and getattr(settings, 'currency_symbol', None):
+            symbol = settings.currency_symbol
+    except Exception:
+        pass
+    return f"{num:,.2f} {symbol}"
+
+# جلسات للمصادقة
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+from flask import session
+
+# مُحدد الدور
+def login_required(role=None):
+    def auth_decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not session.get('user_id'):
+                flash('الرجاء تسجيل الدخول للمتابعة', 'error')
+                return redirect(url_for('login'))
+            if role:
+                user_role = session.get('user_role')
+                allowed = user_role == 'admin' or user_role == role or (role == 'inventory' and user_role == 'admin')
+                if not allowed:
+                    flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
+                    return redirect(url_for('index'))
+            return fn(*args, **kwargs)
+        return wrapper
+    return auth_decorator
+
+# إنشاء مستخدم افتراضي إذا لم يوجد
+def ensure_admin_user():
+    if not User.query.filter_by(username='admin').first():
+        user = User(username='admin', password_hash=generate_password_hash('Admin@123'), role='admin', is_active=True)
+        db.session.add(user)
+        db.session.commit()
+
+# Register the function to run when the app starts
+with app.app_context():
+    ensure_admin_user()
+
+# صفحات المصادقة
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        user = User.query.filter_by(username=username, is_active=True).first()
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            session['user_name'] = user.username
+            session['user_role'] = user.role
+            flash('تم تسجيل الدخول بنجاح', 'success')
+            return redirect(url_for('index'))
+        flash('بيانات الدخول غير صحيحة', 'error')
+    return render_template('login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('تم تسجيل الخروج', 'success')
+    return redirect(url_for('login'))
+
+# حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
+@app.before_request
+def _require_login():
+    if request.endpoint in ('login', 'static'):
+        return
+    if not session.get('user_id'):
+        # API تفضّل JSON عندما يطلب العميل JSON
+        if request.accept_mimetypes and request.accept_mimetypes['application/json'] > request.accept_mimetypes['text/html']:
+            return jsonify(success=False, message='Unauthorized'), 401
+        return redirect(url_for('login'))
+
 @app.route('/')
+@login_required()
 def index():
     """الصفحة الرئيسية"""
     # إحصائيات سريعة
@@ -74,7 +174,94 @@ def inject_store_settings():
     except Exception:
         return {'settings': None}
 
+# إتاحة current_user في القوالب
+@app.context_processor
+def inject_current_user():
+    try:
+        uid = session.get('user_id')
+        user = User.query.get(uid) if uid else None
+        return {'current_user': user}
+    except Exception:
+        return {'current_user': None}
+
+# ==================== إدارة المستخدمين ====================
+
+@app.route('/users')
+@login_required('admin')
+def users_list():
+    users = User.query.order_by(User.created_at.desc()).all()
+    return render_template('users_list.html', users=users)
+
+@app.route('/users/new', methods=['GET', 'POST'])
+@login_required('admin')
+def user_new():
+    form = UserForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        role = form.role.data
+        is_active = form.is_active.data
+
+        if User.query.filter_by(username=username).first():
+            flash('اسم المستخدم موجود مسبقًا', 'error')
+            return redirect(url_for('user_new'))
+
+        user = User(
+            username=username,
+            password_hash=generate_password_hash(password),
+            role=role,
+            is_active=is_active
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('تم إضافة المستخدم بنجاح', 'success')
+        return redirect(url_for('users_list'))
+
+    return render_template('user_form.html', form=form, user=None)
+
+@app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required('admin')
+def user_edit(user_id):
+    user = User.query.get_or_404(user_id)
+    form = UserForm(obj=user)
+    if form.validate_on_submit():
+        user.username = form.username.data
+        if form.password.data:
+            user.password_hash = generate_password_hash(form.password.data)
+        user.role = form.role.data
+        user.is_active = form.is_active.data
+        db.session.commit()
+        flash('تم تحديث المستخدم بنجاح', 'success')
+        return redirect(url_for('users_list'))
+    return render_template('user_form.html', form=form, user=user)
+
+@app.route('/users/<int:user_id>/toggle', methods=['POST'])
+@login_required('admin')
+def user_toggle(user_id):
+    user = User.query.get_or_404(user_id)
+    user.is_active = not user.is_active
+    db.session.commit()
+    flash('تم تحديث حالة المستخدم', 'success')
+    return redirect(url_for('users_list'))
+
 # ==================== إدارة المنتجات ====================
+
+@app.route('/brands')
+def brands():
+    """صفحة الماركات"""
+    brands = Brand.query.order_by(Brand.name.asc()).all()
+    return render_template('brands.html', brands=brands)
+
+# API بسيطة للبحث بالباركود (POS)
+@app.route('/api/products/barcode/<barcode>')
+def api_product_by_barcode(barcode):
+    try:
+        product = Product.query.filter_by(barcode=barcode).first()
+        if not product:
+            return jsonify(success=False, message='الباركود غير موجود'), 404
+        return jsonify(success=True, product=product.to_dict())
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 400
 
 @app.route('/products')
 def products():
@@ -106,77 +293,92 @@ def products():
         query = query.filter(Product.category_id == category)
     
     products = query.order_by(Product.created_at.desc()).all()
-    brands = db.session.query(Product.brand).distinct().all()
-    brands = [brand[0] for brand in brands if brand[0]]
+    # اجلب قائمة الماركات من جدول الماركات
+    brands = [b.name for b in Brand.query.order_by(Brand.name.asc()).all()]
     categories = Category.query.all()
     
     return render_template('products.html', products=products, brands=brands, categories=categories)
 
 @app.route('/products/add', methods=['GET', 'POST'])
+@login_required
 def add_product():
-    """إضافة منتج جديد"""
-    if request.method == 'POST':
-        try:
-            product = Product(
-                name=request.form['name'],
-                brand=request.form['brand'],
-                model=request.form['model'],
-                color=request.form.get('color', ''),
-                description=request.form.get('description', ''),
-                price_buy=float(request.form['price_buy']),
-                price_sell=float(request.form['price_sell']),
-                quantity=int(request.form['quantity']),
-                min_quantity=int(request.form.get('min_quantity', 5)),
-                barcode=request.form.get('barcode', ''),
-                category_id=int(request.form['category_id']) if request.form['category_id'] else None,
-                supplier_id=int(request.form['supplier_id']) if request.form['supplier_id'] else None
-            )
-            
-            db.session.add(product)
-            db.session.commit()
-            flash('تم إضافة المنتج بنجاح', 'success')
-            return redirect(url_for('products'))
-            
-        except Exception as e:
-            flash(f'خطأ في إضافة المنتج: {str(e)}', 'error')
-            db.session.rollback()
-    
-    suppliers = Supplier.query.all()
+    form = ProductForm()
+    if form.validate_on_submit():
+        image_filename = None
+        if form.image.data and allowed_file(form.image.data.filename):
+            image_filename = secure_filename(form.image.data.filename)
+            form.image.data.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+
+        new_product = Product(name=form.name.data, brand=form.brand.data, model=form.model.data, color=form.color.data,
+                              description=form.description.data, price_buy=form.price_buy.data, price_sell=form.price_sell.data,
+                              quantity=form.quantity.data, min_quantity=form.min_quantity.data, barcode=form.barcode.data,
+                              imei=form.imei.data, warranty_period=form.warranty_period.data,
+                              category_id=form.category_id.data, supplier_id=form.supplier_id.data)
+        db.session.add(new_product)
+        db.session.commit()
+        flash('Product added successfully!', 'success')
+        return redirect(url_for('products'))
+    elif request.method == 'POST':
+        flash('Form validation failed. Please check your inputs.', 'danger')
+
     categories = Category.query.all()
-    return render_template('add_product.html', suppliers=suppliers, categories=categories)
+    brands = Brand.query.all()
+    suppliers = Supplier.query.all()
+    form.category_id.choices = [(c.id, c.name) for c in categories]
+    form.brand_id.choices = [(b.id, b.name) for b in brands]
+    form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+    return render_template('add_product.html', form=form, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
+@login_required()
 def edit_product(product_id):
-    """تعديل منتج"""
     product = Product.query.get_or_404(product_id)
-    
-    if request.method == 'POST':
-        try:
-            product.name = request.form['name']
-            product.brand = request.form['brand']
-            product.model = request.form['model']
-            product.color = request.form.get('color', '')
-            product.description = request.form.get('description', '')
-            product.price_buy = float(request.form['price_buy'])
-            product.price_sell = float(request.form['price_sell'])
-            product.quantity = int(request.form['quantity'])
-            product.min_quantity = int(request.form.get('min_quantity', 5))
-            product.barcode = request.form.get('barcode', '')
-            product.category_id = int(request.form['category_id']) if request.form['category_id'] else None
-            product.supplier_id = int(request.form['supplier_id']) if request.form['supplier_id'] else None
-            product.updated_at = datetime.utcnow()
-            
-            db.session.commit()
-            flash('تم تحديث المنتج بنجاح', 'success')
-            return redirect(url_for('products'))
-            
-        except Exception as e:
-            flash(f'خطأ في تحديث المنتج: {str(e)}', 'error')
-            db.session.rollback()
-    
-    suppliers = Supplier.query.all()
+    form = ProductForm(obj=product)
+    if form.validate_on_submit():
+        if form.image.data and allowed_file(form.image.data.filename):
+            if product.image:
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product.image))
+                except OSError as e:
+                    app.logger.error(f"Error deleting old image: {e}")
+            image_filename = secure_filename(form.image.data.filename)
+            form.image.data.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+            product.image = image_filename
+        elif form.image.data is None and 'image-clear' in request.form: # Handle image clearing
+            if product.image:
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product.image))
+                except OSError as e:
+                    app.logger.error(f"Error deleting old image: {e}")
+                product.image = None
+
+        product.name = form.name.data
+        product.brand = form.brand.data
+        product.model = form.model.data
+        product.color = form.color.data
+        product.description = form.description.data
+        product.price_buy = form.price_buy.data
+        product.price_sell = form.price_sell.data
+        product.quantity = form.quantity.data
+        product.min_quantity = form.min_quantity.data
+        product.barcode = form.barcode.data
+        product.imei = form.imei.data
+        product.warranty_period = form.warranty_period.data
+        product.category_id = form.category_id.data
+        product.supplier_id = form.supplier_id.data
+        db.session.commit()
+        flash('Product updated successfully!', 'success')
+        return redirect(url_for('products'))
+    elif request.method == 'POST':
+        flash('Form validation failed. Please check your inputs.', 'danger')
+
     categories = Category.query.all()
-    return render_template('edit_product.html', product=product, suppliers=suppliers, categories=categories)
+    brands = Brand.query.all()
+    suppliers = Supplier.query.all()
+    form.category_id.choices = [(c.id, c.name) for c in categories]
+    form.brand_id.choices = [(b.id, b.name) for b in brands]
+    form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+    return render_template('edit_product.html', form=form, product=product, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/delete/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
@@ -201,13 +403,15 @@ def categories():
     return render_template('categories.html', categories=categories)
 
 @app.route('/categories/add', methods=['GET', 'POST'])
+@login_required()
 def add_category():
-    """إضافة فئة جديدة"""
-    if request.method == 'POST':
+    """إضافة فئة"""
+    form = CategoryForm()
+    if form.validate_on_submit():
         try:
             category = Category(
-                name=request.form['name'],
-                description=request.form.get('description', '')
+                name=form.name.data,
+                description=form.description.data
             )
             
             db.session.add(category)
@@ -219,17 +423,18 @@ def add_category():
             flash(f'خطأ في إضافة الفئة: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('add_category.html')
+    return render_template('add_category.html', form=form)
 
 @app.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
+@login_required()
 def edit_category(category_id):
     """تعديل فئة"""
     category = Category.query.get_or_404(category_id)
+    form = CategoryForm(obj=category)
     
-    if request.method == 'POST':
+    if form.validate_on_submit():
         try:
-            category.name = request.form['name']
-            category.description = request.form.get('description', '')
+            form.populate_obj(category)
             
             db.session.commit()
             flash('تم تحديث الفئة بنجاح', 'success')
@@ -239,7 +444,7 @@ def edit_category(category_id):
             flash(f'خطأ في تحديث الفئة: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('edit_category.html', category=category)
+    return render_template('edit_category.html', category=category, form=form)
 
 @app.route('/categories/delete/<int:category_id>', methods=['POST'])
 def delete_category(category_id):
@@ -282,15 +487,17 @@ def customers():
     return render_template('customers.html', customers=customers)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
+@login_required()
 def add_customer():
     """إضافة عميل جديد"""
-    if request.method == 'POST':
+    form = CustomerForm()
+    if form.validate_on_submit():
         try:
             customer = Customer(
-                name=request.form['name'],
-                phone=request.form.get('phone', ''),
-                email=request.form.get('email', ''),
-                address=request.form.get('address', '')
+                name=form.name.data,
+                phone=form.phone.data,
+                email=form.email.data,
+                address=form.address.data
             )
             
             db.session.add(customer)
@@ -302,19 +509,17 @@ def add_customer():
             flash(f'خطأ في إضافة العميل: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('add_customer.html')
+    return render_template('add_customer.html', form=form)
 
 @app.route('/customers/edit/<int:customer_id>', methods=['GET', 'POST'])
+@login_required()
 def edit_customer(customer_id):
     """تعديل عميل"""
     customer = Customer.query.get_or_404(customer_id)
-    
-    if request.method == 'POST':
+    form = CustomerForm(obj=customer)
+    if form.validate_on_submit():
         try:
-            customer.name = request.form['name']
-            customer.phone = request.form.get('phone', '')
-            customer.email = request.form.get('email', '')
-            customer.address = request.form.get('address', '')
+            form.populate_obj(customer)
             
             db.session.commit()
             flash('تم تحديث العميل بنجاح', 'success')
@@ -324,7 +529,7 @@ def edit_customer(customer_id):
             flash(f'خطأ في تحديث العميل: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('edit_customer.html', customer=customer)
+    return render_template('edit_customer.html', customer=customer, form=form)
 
 @app.route('/customers/delete/<int:customer_id>', methods=['POST'])
 def delete_customer(customer_id):
@@ -362,16 +567,18 @@ def suppliers():
     return render_template('suppliers.html', suppliers=suppliers)
 
 @app.route('/suppliers/add', methods=['GET', 'POST'])
+@login_required()
 def add_supplier():
     """إضافة مورد جديد"""
-    if request.method == 'POST':
+    form = SupplierForm()
+    if form.validate_on_submit():
         try:
             supplier = Supplier(
-                name=request.form['name'],
-                company=request.form.get('company', ''),
-                phone=request.form.get('phone', ''),
-                email=request.form.get('email', ''),
-                address=request.form.get('address', '')
+                name=form.name.data,
+                company=form.company.data,
+                phone=form.phone.data,
+                email=form.email.data,
+                address=form.address.data
             )
             
             db.session.add(supplier)
@@ -383,20 +590,58 @@ def add_supplier():
             flash(f'خطأ في إضافة المورد: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('add_supplier.html')
+    return render_template('add_supplier.html', form=form)
+
+@app.route('/brands/add', methods=['GET', 'POST'])
+@login_required()
+def add_brand():
+    """إضافة ماركة جديدة"""
+    form = BrandForm()
+    if form.validate_on_submit():
+        try:
+            brand_name = form.name.data.strip()
+            if not brand_name:
+                flash('اسم الماركة لا يمكن أن يكون فارغًا', 'error')
+                return redirect(url_for('add_brand'))
+
+            existing_brand = Brand.query.filter_by(name=brand_name).first()
+            if existing_brand:
+                flash('هذه الماركة موجودة بالفعل', 'error')
+                return redirect(url_for('add_brand'))
+
+            brand = Brand(name=brand_name)
+            db.session.add(brand)
+            db.session.commit()
+            flash('تم إضافة الماركة بنجاح', 'success')
+            return redirect(url_for('brands'))
+        except Exception as e:
+            flash(f'خطأ في إضافة الماركة: {str(e)}', 'error')
+            db.session.rollback()
+    return render_template('add_brand.html', form=form)
+
+@app.route('/brands/delete/<int:brand_id>', methods=['POST'])
+def delete_brand(brand_id):
+    """حذف ماركة"""
+    try:
+        brand = Brand.query.get_or_404(brand_id)
+        db.session.delete(brand)
+        db.session.commit()
+        flash('تم حذف الماركة بنجاح', 'success')
+    except Exception as e:
+        flash(f'خطأ في حذف الماركة: {str(e)}', 'error')
+        db.session.rollback()
+    return redirect(url_for('brands'))
 
 @app.route('/suppliers/edit/<int:supplier_id>', methods=['GET', 'POST'])
+@login_required()
 def edit_supplier(supplier_id):
     """تعديل مورد"""
     supplier = Supplier.query.get_or_404(supplier_id)
+    form = SupplierForm(obj=supplier)
     
-    if request.method == 'POST':
+    if form.validate_on_submit():
         try:
-            supplier.name = request.form['name']
-            supplier.company = request.form.get('company', '')
-            supplier.phone = request.form.get('phone', '')
-            supplier.email = request.form.get('email', '')
-            supplier.address = request.form.get('address', '')
+            form.populate_obj(supplier)
             
             db.session.commit()
             flash('تم تحديث المورد بنجاح', 'success')
@@ -406,7 +651,7 @@ def edit_supplier(supplier_id):
             flash(f'خطأ في تحديث المورد: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('edit_supplier.html', supplier=supplier)
+    return render_template('edit_supplier.html', supplier=supplier, form=form)
 
 @app.route('/suppliers/delete/<int:supplier_id>', methods=['POST'])
 def delete_supplier(supplier_id):
@@ -437,18 +682,20 @@ def sales():
     return render_template('sales.html', sales=sales)
 
 @app.route('/sales/new', methods=['GET', 'POST'])
+@login_required()
 def new_sale():
     """إنشاء فاتورة بيع جديدة"""
-    if request.method == 'POST':
+    form = SaleForm()
+    if form.validate_on_submit():
         try:
             # إنشاء الفاتورة
             sale = Sale(
-                customer_id=int(request.form['customer_id']) if request.form['customer_id'] else None,
-                total_amount=float(request.form['total_amount']),
-                discount=float(request.form.get('discount', 0)),
-                final_amount=float(request.form['final_amount']),
-                payment_method=request.form.get('payment_method', 'نقدي'),
-                notes=request.form.get('notes', '')
+                customer_id=form.customer_id.data if form.customer_id.data else None,
+                total_amount=form.total_amount.data,
+                discount=form.discount.data,
+                final_amount=form.final_amount.data,
+                payment_method=form.payment_method.data,
+                notes=form.notes.data
             )
             
             db.session.add(sale)
@@ -495,13 +742,242 @@ def new_sale():
     
     customers = Customer.query.all()
     products = Product.query.filter(Product.quantity > 0).all()
-    return render_template('new_sale.html', customers=customers, products=products)
+    return render_template('new_sale.html', form=form, customers=customers, products=products)
 
 @app.route('/sales/<int:sale_id>')
 def view_sale(sale_id):
     """عرض تفاصيل الفاتورة"""
     sale = Sale.query.get_or_404(sale_id)
     return render_template('view_sale.html', sale=sale)
+
+@app.route('/sales/delete/<int:sale_id>', methods=['POST'])
+def delete_sale(sale_id):
+    sale = Sale.query.get_or_404(sale_id)
+    try:
+        db.session.delete(sale)
+        db.session.commit()
+        flash('تم حذف الفاتورة بنجاح!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'حدث خطأ أثناء حذف الفاتورة: {e}', 'danger')
+    return redirect(url_for('sales'))
+
+# Returns Management Routes
+@app.route('/returns')
+def returns():
+    all_returns = Return.query.all()
+    customers = Customer.query.all()
+    products = Product.query.all()
+    # Prefill sale_id if coming from a sale view
+    sale_id_prefill = request.args.get('sale_id', '')
+    return render_template('returns.html', returns=all_returns, customers=customers, products=products, sale_id_prefill=sale_id_prefill)
+
+@app.route('/returns/add', methods=['POST'])
+@login_required()
+def add_return():
+    form = ReturnForm()
+    if form.validate_on_submit():
+        try:
+            # Obtener datos del formulario
+            sale_id = form.sale_id.data
+            customer_id = form.customer_id.data
+            total_amount = form.total_amount.data
+            reason = form.reason.data
+            notes = form.notes.data
+
+            # Validar datos básicos
+            if not sale_id:
+                return jsonify(success=False, message='رقم الفاتورة الأصلية مطلوب')
+            
+            # لا نتحقق من إجمالي المدخل؛ سنحسب الإجمالي الفعلي من العناصر لاحقاً
+
+            # Crear objeto de devolución
+            new_return = Return(
+                sale_id=sale_id,
+                customer_id=customer_id if customer_id else None,
+                total_amount=total_amount,
+                reason=reason,
+                notes=notes
+            )
+            db.session.add(new_return)
+            db.session.flush()  # Obtener el ID antes de confirmar
+
+            # Procesar عناصر المرتجع (لا يزال من request.form.getlist لأنها حقول ديناميكية)
+            product_ids = request.form.getlist('product_id[]')
+            quantities = request.form.getlist('quantity[]')
+            prices = request.form.getlist('price[]')
+
+            # Validar que hay al menos un producto
+            if not product_ids or len(product_ids) == 0:
+                db.session.rollback()
+                return jsonify(success=False, message='يجب إضافة منتج واحد على الأقل')
+
+            # Validate sale existence and build sold quantities map
+            sale = Sale.query.get(int(sale_id))
+            if not sale:
+                db.session.rollback()
+                return jsonify(success=False, message='رقم الفاتورة الأصلية غير موجود')
+
+            sold_quantities = {}
+            for si in sale.sale_items:
+                sold_quantities[si.product_id] = sold_quantities.get(si.product_id, 0) + si.quantity
+
+            # Already returned for this sale
+            previous_returns = ReturnItem.query.join(Return).filter(Return.sale_id == sale.id).all()
+            already_returned = {}
+            for ri in previous_returns:
+                already_returned[ri.product_id] = already_returned.get(ri.product_id, 0) + ri.quantity
+
+            calculated_total = 0.0
+
+            # Procesar cada elemento con تحقق من الكميات
+            for i in range(len(product_ids)):
+                if i < len(quantities) and i < len(prices):  # Asegurar que los índices son válidos
+                    try:
+                        product_id = int(product_ids[i])
+                        quantity = int(quantities[i])
+                        price = float(prices[i])
+
+                        # Validar datos del producto
+                        if not product_id or product_id <= 0:
+                            continue  # عناصر غير صالحة
+                            
+                        if quantity <= 0:
+                            continue
+                            
+                        if price < 0:
+                            continue
+
+                        # تحقق وجود المنتج
+                        product = Product.query.get(product_id)
+                        if not product:
+                            continue
+
+                        # تحقق من السماح بالارجاع حسب الفاتورة
+                        allowed_qty = sold_quantities.get(product_id, 0) - already_returned.get(product_id, 0)
+                        if allowed_qty <= 0:
+                            continue  # لم يُبع أو تم إرجاعه بالكامل
+
+                        if quantity > allowed_qty:
+                            quantity = allowed_qty  # لا نتجاوز المسموح
+
+                        if quantity <= 0:
+                            continue
+
+                        # إنشاء عنصر المرتجع
+                        return_item = ReturnItem(
+                            return_id=new_return.id,
+                            product_id=product_id,
+                            quantity=quantity,
+                            price=price
+                        )
+                        db.session.add(return_item)
+
+                        # تحديث المخزون
+                        product.quantity += quantity
+
+                        # جمع الإجمالي المحسوب
+                        calculated_total += quantity * price
+                    except (ValueError, TypeError):
+                        continue
+
+            # تحديث الإجمالي المحسوب لضمان التناسق
+            new_return.total_amount = calculated_total
+
+            # Confirmar cambios
+            db.session.commit()
+            # If request expects JSON (AJAX), return JSON; else redirect with flash
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+                return jsonify(success=True, message='تم إضافة المرتجع بنجاح!')
+            flash('تم إضافة المرتجع بنجاح!', 'success')
+            return redirect(url_for('returns'))
+        except Exception as e:
+            db.session.rollback()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+                return jsonify(success=False, message=str(e))
+            flash(f'حدث خطأ أثناء إضافة المرتجع: {e}', 'danger')
+            return redirect(url_for('returns'))
+
+@app.route('/returns/<int:return_id>')
+def view_return(return_id):
+    try:
+        return_obj = Return.query.get_or_404(return_id)
+        return_data = return_obj.to_dict()
+        
+        # Obtener los elementos de la devolución
+        return_items = []
+        for item in ReturnItem.query.filter_by(return_id=return_id).all():
+            product = Product.query.get(item.product_id)
+            product_name = product.name if product else "منتج غير معروف"
+            
+            return_items.append({
+                'id': item.id,
+                'product_id': item.product_id,
+                'product_name': product_name,
+                'quantity': item.quantity,
+                'price': item.price,
+                'total': item.quantity * item.price
+            })
+        
+        return_data['return_items'] = return_items
+        return jsonify(success=True, return_data=return_data)
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
+
+# API: عناصر الفاتورة القابلة للإرجاع للتعبئة التلقائية
+@app.route('/api/sales/<int:sale_id>/returnable-items')
+def api_sale_returnable_items(sale_id):
+    try:
+        sale = Sale.query.get_or_404(sale_id)
+        # خريطة الكميات المباعة
+        sold = {}
+        for si in sale.sale_items:
+            sold[si.product_id] = sold.get(si.product_id, 0) + si.quantity
+        # خريطة الكميات المرتجعة سابقاً
+        prev = {}
+        for ri in ReturnItem.query.join(Return).filter(Return.sale_id == sale.id).all():
+            prev[ri.product_id] = prev.get(ri.product_id, 0) + ri.quantity
+        # بناء العناصر المسموح إرجاعها
+        items = []
+        for si in sale.sale_items:
+            product = si.product
+            sold_qty = sold.get(si.product_id, 0)
+            returned_qty = prev.get(si.product_id, 0)
+            allowed = max(0, sold_qty - returned_qty)
+            if allowed > 0:
+                items.append({
+                    'product_id': si.product_id,
+                    'product_name': product.name if product else 'منتج',
+                    'sold_qty': sold_qty,
+                    'already_returned': returned_qty,
+                    'allowed_qty': allowed,
+                    'unit_price': si.unit_price
+                })
+        data = {
+            'sale_id': sale.id,
+            'customer_id': sale.customer_id,
+            'customer_name': sale.customer.name if sale.customer else None,
+            'items': items
+        }
+        return jsonify(success=True, data=data)
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 400
+
+@app.route('/returns/delete/<int:return_id>', methods=['POST'])
+def delete_return(return_id):
+    return_obj = Return.query.get_or_404(return_id)
+    try:
+        # Before deleting the return, revert stock safely
+        for item in return_obj.return_items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.quantity = max(0, product.quantity - item.quantity)
+        db.session.delete(return_obj)
+        db.session.commit()
+        return jsonify(success=True, message='تم حذف المرتجع بنجاح!')
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e))
 
 # ==================== التقارير ====================
 
@@ -512,6 +988,11 @@ def reports():
     current_month = datetime.now().replace(day=1)
     monthly_sales = Sale.query.filter(Sale.created_at >= current_month).all()
     monthly_revenue = sum(sale.final_amount for sale in monthly_sales)
+
+    # المرتجعات خلال الشهر وصافي المبيعات
+    monthly_returns = Return.query.filter(Return.return_date >= current_month).all()
+    monthly_returns_total = sum(r.total_amount for r in monthly_returns)
+    net_revenue = monthly_revenue - monthly_returns_total
     
     # تقرير المنتجات الأكثر مبيعاً
     top_products = db.session.query(
@@ -530,7 +1011,9 @@ def reports():
                          monthly_revenue=monthly_revenue,
                          monthly_sales_count=len(monthly_sales),
                          top_products=top_products,
-                         low_stock=low_stock)
+                         low_stock=low_stock,
+                         monthly_returns_total=monthly_returns_total,
+                         net_revenue=net_revenue)
 
 # ==================== API للتكامل مع n8n/Google Sheets ====================
 
@@ -1082,4 +1565,13 @@ def english_numbers_filter(text):
     return convert_to_english_numbers_app(text)
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+
+        # Check if default settings exist, if not, create them
+        if not StoreSettings.query.first():
+            # Add default settings if they don't exist
+            default_settings = StoreSettings(store_name="My Phone Store", currency="USD")
+            db.session.add(default_settings)
+            db.session.commit()
     app.run(debug=True, host='127.0.0.1', port=5000)

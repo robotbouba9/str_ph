@@ -16,11 +16,18 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # Initialize Flask app for database context
 app = Flask(__name__)
-# Use absolute path for database
-import os
-db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'phone_store.db')
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Load same database config as the web app; fallback to local SQLite if unavailable
+try:
+    from config import config as app_config
+    env_name = os.environ.get('APP_ENV', 'development')
+    app.config.from_object(app_config.get(env_name, app_config['development']))
+except Exception:
+    # Fallback to sqlite file path
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'phone_store.db')
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db.init_app(app)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

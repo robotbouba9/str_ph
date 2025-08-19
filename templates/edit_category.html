@@ -29,18 +29,31 @@
             </div>
             <div class="card-body">
                 <form method="POST" id="categoryForm">
+                    {{ form.csrf_token }}
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="name" class="form-label">اسم الفئة <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name" required
-                                value="{{ category.name }}" placeholder="مثال: هواتف ذكية، سماعات، كابلات الشحن">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control", placeholder="مثال: هواتف ذكية، سماعات، كابلات الشحن", value=category.name) }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.name.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="form-text">اختر اسماً واضحاً ومميزاً للفئة</div>
                         </div>
 
                         <div class="col-md-12 mb-3">
-                            <label for="description" class="form-label">وصف الفئة</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"
-                                placeholder="مثال: الهواتف المحمولة الذكية بجميع أنواعها وماركاتها">{{ category.description or '' }}</textarea>
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows="3", placeholder="مثال: الهواتف المحمولة الذكية بجميع أنواعها وماركاتها", value=category.description) }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.description.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="form-text">اكتب وصفاً مفصلاً للفئة ونوع المنتجات التي تشملها</div>
                         </div>
                     </div>

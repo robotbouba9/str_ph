@@ -26,6 +26,10 @@
             <i class="fas fa-arrow-right me-2"></i>
             العودة للمبيعات
         </a>
+        <a href="{{ url_for('returns') }}?sale_id={{ sale.id }}" class="btn btn-outline-danger me-2">
+            <i class="fas fa-undo me-2"></i>
+            إنشاء مرتجع لهذه الفاتورة
+        </a>
         <button onclick="window.print()" class="btn btn-primary">
             <i class="fas fa-print me-2"></i>
             طباعة
@@ -164,6 +168,47 @@
                 </div>
 
                 <!-- تذييل الفاتورة -->
+                <!-- قسم المرتجعات المرتبطة بهذه الفاتورة -->
+                <div class="mt-4">
+                    <h5 class="mb-3"><i class="fas fa-undo me-2"></i> المرتجعات على هذه الفاتورة</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <a href="{{ url_for('returns') }}?sale_id={{ sale.id }}" class="btn btn-outline-danger">
+                            <i class="fas fa-undo me-2"></i> إنشاء مرتجع لهذه الفاتورة
+                        </a>
+                    </div>
+                    {% if sale.returns %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>التاريخ</th>
+                                    <th>المبلغ</th>
+                                    <th>السبب</th>
+                                    <th>تفاصيل</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in sale.returns %}
+                                <tr>
+                                    <td>{{ r.id }}</td>
+                                    <td>{{ r.return_date.strftime('%Y-%m-%d %H:%M') if r.return_date }}</td>
+                                    <td class="text-danger">{{ r.total_amount }}</td>
+                                    <td>{{ r.reason }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_return', return_id=r.id) }}"
+                                            class="btn btn-sm btn-outline-primary">عرض</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-muted">لا توجد مرتجعات على هذه الفاتورة.</div>
+                    {% endif %}
+                </div>
+
                 <div class="text-center mt-4 pt-4 border-top">
                     <p class="text-muted mb-1">شكراً لتعاملكم معنا</p>
                     <p class="text-muted mb-0">

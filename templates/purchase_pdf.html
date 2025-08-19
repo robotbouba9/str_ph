@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة الشراء - {{ purchase.invoice_number }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            direction: rtl;
+            text-align: right;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .company-info {
+            text-align: left;
+        }
+        .invoice-info {
+            text-align: right;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-info">
+            <h1>مخزون محل الهواتف</h1>
+            <p>العنوان: [عنوان المحل]</p>
+            <p>الهاتف: [رقم الهاتف]</p>
+            <p>البريد الإلكتروني: [البريد الإلكتروني]</p>
+        </div>
+        <div class="invoice-info">
+            <h2>فاتورة شراء</h2>
+            <p>رقم الفاتورة: {{ purchase.invoice_number }}</p>
+            <p>التاريخ: {{ purchase.created_at.strftime('%Y-%m-%d') }}</p>
+        </div>
+    </div>
+
+    <div class="details">
+        <table>
+            <tr>
+                <td><strong>المورد:</strong> {{ purchase.supplier.name }}</td>
+                <td><strong>طريقة الدفع:</strong> {{ purchase.payment_method }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>ملاحظات:</strong> {{ purchase.notes or 'لا توجد ملاحظات' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>اسم المنتج</th>
+                <th>الكمية</th>
+                <th>س الشراء</th>
+                <th>الإجمالي</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in purchase.purchase_items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unit_price|currency }}</td>
+                <td>{{ item.total_price|currency }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="3"><strong>الإجمالي:</strong></td>
+                <td>{{ purchase.total_amount|currency }}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3"><strong>الخصم:</strong></td>
+                <td>{{ purchase.discount|currency }}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3"><strong>الإجمالي النهائي:</strong></td>
+                <td>{{ purchase.final_amount|currency }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="footer">
+        <p>تم إنشاء الفاتورة بواسطة: {{ purchase.user.username }}</p>
+    </div>
+</body>
+</html>

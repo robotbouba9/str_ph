@@ -29,29 +29,54 @@
             </div>
             <div class="card-body">
                 <form method="POST" id="customerForm">
+                    {{ form.csrf_token }}
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="name" class="form-label">اسم العميل <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name" required
-                                value="{{ customer.name }}" placeholder="الاسم الكامل للعميل">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control", placeholder="الاسم الكامل للعميل", value=customer.name) }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.name.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">رقم الهاتف</label>
-                            <input type="tel" class="form-control" id="phone" name="phone"
-                                value="{{ customer.phone or '' }}" placeholder="01xxxxxxxxx">
+                            {{ form.phone.label(class="form-label") }}
+                            {{ form.phone(class="form-control", placeholder="01xxxxxxxxx", value=customer.phone) }}
+                            {% if form.phone.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.phone.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-12 mb-3">
-                            <label for="email" class="form-label">البريد الإلكتروني</label>
-                            <input type="email" class="form-control" id="email" name="email"
-                                value="{{ customer.email or '' }}" placeholder="example@email.com">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control", placeholder="example@email.com", value=customer.email) }}
+                            {% if form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.email.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="col-md-12 mb-3">
-                            <label for="address" class="form-label">العنوان</label>
-                            <textarea class="form-control" id="address" name="address" rows="3"
-                                placeholder="العنوان الكامل للعميل...">{{ customer.address or '' }}</textarea>
+                            {{ form.address.label(class="form-label") }}
+                            {{ form.address(class="form-control", rows="3", placeholder="العنوان الكامل للعميل...", value=customer.address) }}
+                            {% if form.address.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.address.errors %}
+                                <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 

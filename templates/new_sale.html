@@ -19,6 +19,7 @@
 </div>
 
 <form method="POST" id="saleForm">
+    {{ form.csrf_token }}
     <div class="row">
         <div class="col-lg-8">
             <!-- معلومات العميل -->
@@ -32,15 +33,8 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-8">
-                            <label for="customer_id" class="form-label">العميل</label>
-                            <select class="form-select" id="customer_id" name="customer_id">
-                                <option value="">عميل غير محدد</option>
-                                {% for customer in customers %}
-                                <option value="{{ customer.id }}" data-phone="{{ customer.phone }}">
-                                    {{ customer.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            {{ form.customer_id.label(class="form-label") }}
+                            {{ form.customer_id(class="form-select") }}
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">&nbsp;</label>
@@ -70,6 +64,16 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <input type="text" id="barcodeInput" class="form-control"
+                                placeholder="👨‍💼 امسح الباركود أو اكتب الرقم ثم Enter">
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted" id="barcodeHint">اكتب/اسحب الباركود وسيتم إضافة المنتج
+                                تلقائيًا.</small>
+                        </div>
+                    </div>
                     <div id="productsContainer">
                         <div class="product-row mb-3" data-row="0">
                             <div class="row align-items-end">
@@ -152,8 +156,7 @@
                             <label for="discount" class="form-label">الخصم:</label>
                         </div>
                         <div class="col-6">
-                            <input type="number" class="form-control" id="discount" name="discount" step="0.01" min="0"
-                                value="0" onchange="updateTotal()">
+                            {{ form.discount(class="form-control", onchange="updateTotal()") }}
                         </div>
                     </div>
 
@@ -169,24 +172,23 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="payment_method" class="form-label">طريقة الدفع</label>
-                        <select class="form-select" id="payment_method" name="payment_method">
-                            <option value="نقدي">نقدي</option>
-                            <option value="بطاقة ائتمان">بطاقة ائتمان</option>
-                            <option value="تحويل بنكي">تحويل بنكي</option>
-                            <option value="آجل">آجل</option>
-                        </select>
+                        {{ form.payment_method.label(class="form-label") }}
+                        {{ form.payment_method(class="form-select") }}
                     </div>
 
                     <div class="mb-3">
-                        <label for="notes" class="form-label">ملاحظات</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"
-                            placeholder="ملاحظات إضافية..."></textarea>
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows="3", placeholder="ملاحظات إضافية...") }}
                     </div>
 
                     <!-- الحقول المخفية -->
-                    <input type="hidden" id="total_amount" name="total_amount" value="0">
-                    <input type="hidden" id="final_amount" name="final_amount" value="0">
+                    {{ form.total_amount(type="hidden") }}
+                    {{ form.final_amount(type="hidden") }}
+
+                    <button type="submit" class="btn btn-success w-100 mt-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        حفظ الفاتورة
+                    </button>
 
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -409,6 +411,42 @@
         }
 
         return true;
+    });
+
+    // سكان باركود سريع
+    document.getElementById('barcodeInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const code = this.value.trim();
+            if (!code) return;
+            fetch(`/api/products/barcode/${encodeURIComponent(code)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (!res.success) { alert(res.message || 'لم يتم العثور على المنتج'); return; }
+                    const p = res.product;
+                    // ابحث إن كان موجوداً في أحد الصفوف لاختصار الوقت
+                    let found = false;
+                    document.querySelectorAll('.product-select').forEach((sel, idx) => {
+                        if (sel.value == p.id) {
+                            const row = sel.closest('.product-row');
+                            const q = row.querySelector('.quantity');
+                            q.value = (parseInt(q.value || '0') + 1);
+                            updateRowTotal(parseInt(row.getAttribute('data-row')));
+                            found = true;
+                        }
+                    });
+                    if (!found) {
+                        // أضف صف جديد وحدد المنتج
+                        addProductRow();
+                        const lastRow = document.querySelector(`.product-row[data-row="${rowCounter}"]`);
+                        const select = lastRow.querySelector('.product-select');
+                        select.value = String(p.id);
+                        updateProductInfo(select, rowCounter);
+                    }
+                    document.getElementById('barcodeInput').value = '';
+                })
+                .catch(() => alert('تعذر جلب بيانات المنتج'));
+        }
     });
 
     // تهيئة الصفحة

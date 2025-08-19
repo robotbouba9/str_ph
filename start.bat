@@ -20,7 +20,7 @@ if "%choice%"=="5" goto exit
 
 :web
 echo تشغيل تطبيق الويب...
-python run_web.py
+python minimal_app.py
 pause
 goto menu
 
@@ -51,4 +51,7 @@ goto start
 
 :exit
 echo شكراً لاستخدام متجر الهواتف!
+pause
+
+:eof
 pause
