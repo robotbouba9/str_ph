@@ -1586,3 +1586,5 @@ if __name__ == '__main__':
             db.session.add(default_settings)
             db.session.commit()
     app.run(debug=True, host='127.0.0.1', port=5000)
+# تعليق جديد لتشغيل نشر جديد على Render
+
