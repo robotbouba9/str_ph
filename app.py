@@ -118,6 +118,15 @@ def logout():
     flash('تم تسجيل الخروج', 'success')
     return redirect(url_for('login'))
 
+@app.route('/test_urls')
+def test_urls():
+    try:
+        add_product_url = url_for('add_product')
+        edit_product_url = url_for('edit_product', product_id=1) # product_id is required for edit_product
+        return f"Add Product URL: {add_product_url}<br>Edit Product URL: {edit_product_url}"
+    except Exception as e:
+        return f"Error building URL: {e}"
+
 # حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
 @app.before_request
 def _require_login():
@@ -1587,4 +1596,3 @@ if __name__ == '__main__':
             db.session.commit()
     app.run(debug=True, host='127.0.0.1', port=5000)
 # تعليق جديد لتشغيل نشر جديد على Render
-
