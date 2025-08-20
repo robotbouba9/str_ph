@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import os
 from io import BytesIO
 from flask_wtf import CSRFProtect
+from werkzeug.utils import secure_filename
 from forms import LoginForm, UserForm, ProductForm, CustomerForm, SupplierForm, CategoryForm, BrandForm, StoreSettingsForm, ReturnForm
 
 # إعداد التطبيق
@@ -137,10 +138,13 @@ def index():
     total_customers = Customer.query.count()
     total_suppliers = Supplier.query.count()
     
-    # المبيعات اليوم
+    # المبيعات اليوم (استخدم نطاق زمني لتوافق أفضل بين SQLite/PostgreSQL)
     today = datetime.now().date()
+    day_start = datetime.combine(today, datetime.min.time())
+    day_end = day_start + timedelta(days=1)
     today_sales = Sale.query.filter(
-        db.func.date(Sale.created_at) == today
+        Sale.created_at >= day_start,
+        Sale.created_at < day_end
     ).all()
     today_revenue = sum(sale.final_amount for sale in today_sales)
     
@@ -1563,6 +1567,13 @@ def currency_decimal_filter(amount):
 def english_numbers_filter(text):
     """فلتر تحويل الأرقام العربية إلى إنجليزية"""
     return convert_to_english_numbers_app(text)
+
+# Allowed extensions for file uploads
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':
     with app.app_context():
