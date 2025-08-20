@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: store-web
+    env: python
+    plan: free
+    buildCommand: |
+      apt-get update && apt-get install -y \
+        libcairo2 \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libgdk-pixbuf2.0-0 \
+        libffi-dev \
+        shared-mime-info \
+        fonts-liberation \
+        fonts-dejavu \
+        fonts-freefont-ttf \
+        && pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromService:
+          type: postgresql
+          name: store-db
+          property: connectionString
+
+databases:
+  - name: store-db
+    plan: free
