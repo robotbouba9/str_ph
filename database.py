@@ -370,6 +370,11 @@ def init_database(app):
     """تهيئة قاعدة البيانات"""
     db.init_app(app)
     
+    # لا ننشئ الجداول تلقائياً، سيتم إنشاؤها عند الحاجة
+    return db
+
+def create_tables(app):
+    """إنشاء الجداول وإضافة البيانات الافتراضية"""
     with app.app_context():
         # إنشاء الجداول
         db.create_all()
@@ -378,6 +383,13 @@ def init_database(app):
         if not StoreSettings.query.first():
             settings = StoreSettings()
             db.session.add(settings)
+            db.session.commit()
+
+        # إنشاء مستخدم admin افتراضي
+        from werkzeug.security import generate_password_hash
+        if not User.query.filter_by(username='admin').first():
+            user = User(username='admin', password_hash=generate_password_hash('Admin@123'), role='admin', is_active=True)
+            db.session.add(user)
             db.session.commit()
 
         # إضافة بيانات تجريبية إذا كانت قاعدة البيانات فارغة

@@ -14,8 +14,12 @@ class Config:
     if _db_url and _db_url.startswith('postgres://'):
         # توافق Render/Heroku مع SQLAlchemy
         _db_url = _db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
-    SQLALCHEMY_DATABASE_URI = _db_url or 'sqlite:///phone_store.db'
+    SQLALCHEMY_DATABASE_URI = _db_url or f'sqlite:///{os.path.abspath("instance/phone_store.db")}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+    }
     
     # إعدادات الأمان
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'phone-store-secret-key-2024'
@@ -75,9 +79,13 @@ class ProductionConfig(Config):
     SQLALCHEMY_ECHO = False
     
     # إعدادات أمان إضافية للإنتاج
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = False  # Set to False for HTTP on Render
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # إعدادات إضافية للإنتاج
+    WTF_CSRF_TIME_LIMIT = None
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
 
 class TestingConfig(Config):
     """إعدادات بيئة الاختبار"""

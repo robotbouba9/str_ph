@@ -1,14 +1,36 @@
-from flask import Flask, url_for, render_template
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+اختبار بسيط للتطبيق
+"""
 
-app = Flask(__name__)
+import os
+import sys
 
-@app.route('/')
-def index():
-    return f"<a href='{url_for('purchases')}'>Go to Purchases</a>"
+# إضافة المجلد الحالي إلى المسار
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-@app.route('/purchases')
-def purchases():
-    return "This is the purchases page."
-
-if __name__ == '__main__':
-    app.run(debug=True)
+try:
+    from app import app
+    print("✅ تم تحميل التطبيق بنجاح")
+    
+    with app.app_context():
+        from database import db
+        print("✅ تم الاتصال بقاعدة البيانات")
+        
+        # إنشاء الجداول
+        db.create_all()
+        print("✅ تم إنشاء الجداول")
+        
+        # فحص الـ routes
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append(rule.rule)
+        
+        print(f"✅ تم العثور على {len(routes)} route")
+        print("🎉 التطبيق جاهز للعمل!")
+        
+except Exception as e:
+    print(f"❌ خطأ: {e}")
+    import traceback
+    traceback.print_exc()

@@ -4,9 +4,10 @@
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, make_response, send_file
-from database import db, init_database, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, StoreSettings, Brand, Return, ReturnItem, User
+from database import db, init_database, create_tables, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, StoreSettings, Brand, Return, ReturnItem, User
 from datetime import datetime, timedelta
 from excel_export import ExcelExporter
+from thermal_invoice import ThermalInvoiceGenerator
 from dotenv import load_dotenv
 import os
 from io import BytesIO
@@ -28,12 +29,29 @@ try:
     app.config.from_object(config.get(env_name, config['development']))
 except ImportError:
     # الإعدادات الافتراضية إذا لم يكن ملف config.py موجود
-    app.config['SECRET_KEY'] = 'your-secret-key-here'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///phone_store.db'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/phone_store.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# إنشاء مجلد instance إذا لم يكن موجوداً
+os.makedirs('instance', exist_ok=True)
+os.makedirs('uploads', exist_ok=True)
+
+# إعداد مجلد الرفع
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # تهيئة قاعدة البيانات
 init_database(app)
+
+# معالج الأخطاء للإنتاج
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
 
 # ==================== فلاتر Jinja2 ====================
 @app.template_filter('english_numbers')
@@ -86,14 +104,14 @@ def login_required(role=None):
 
 # إنشاء مستخدم افتراضي إذا لم يوجد
 def ensure_admin_user():
-    if not User.query.filter_by(username='admin').first():
-        user = User(username='admin', password_hash=generate_password_hash('Admin@123'), role='admin', is_active=True)
-        db.session.add(user)
-        db.session.commit()
-
-# Register the function to run when the app starts
-with app.app_context():
-    ensure_admin_user()
+    try:
+        if not User.query.filter_by(username='admin').first():
+            user = User(username='admin', password_hash=generate_password_hash('Admin@123'), role='admin', is_active=True)
+            db.session.add(user)
+            db.session.commit()
+    except Exception:
+        # قاعدة البيانات غير جاهزة بعد
+        pass
 
 # صفحات المصادقة
 @app.route('/login', methods=['GET', 'POST'])
@@ -1370,6 +1388,40 @@ def purchase_regular_pdf(purchase_id):
     
     return response
 
+# ==================== الفواتير الحرارية ====================
+
+@app.route('/sales/<int:sale_id>/thermal-pdf')
+def sale_thermal_pdf(sale_id):
+    """تصدير فاتورة البيع كـ PDF حراري (80mm)"""
+    sale = Sale.query.get_or_404(sale_id)
+    store_settings = StoreSettings.query.first()
+    
+    # إنشاء الفاتورة الحرارية
+    thermal_generator = ThermalInvoiceGenerator()
+    buffer = thermal_generator.generate_sale_invoice(sale, store_settings)
+    
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=thermal_sale_{sale_id}.pdf'
+    
+    return response
+
+@app.route('/purchases/<int:purchase_id>/thermal-pdf')
+def purchase_thermal_pdf(purchase_id):
+    """تصدير فاتورة الشراء كـ PDF حراري (80mm)"""
+    purchase = PurchaseInvoice.query.get_or_404(purchase_id)
+    store_settings = StoreSettings.query.first()
+    
+    # إنشاء الفاتورة الحرارية
+    thermal_generator = ThermalInvoiceGenerator()
+    buffer = thermal_generator.generate_purchase_invoice(purchase, store_settings)
+    
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=thermal_purchase_{purchase_id}.pdf'
+    
+    return response
+
 # ==================== تصدير Excel ====================
 
 @app.route('/reports/sales/excel')
@@ -1585,14 +1637,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-
-        # Check if default settings exist, if not, create them
-        if not StoreSettings.query.first():
-            # Add default settings if they don't exist
-            default_settings = StoreSettings(store_name="My Phone Store", currency="USD")
-            db.session.add(default_settings)
-            db.session.commit()
+    # إنشاء الجداول والبيانات الافتراضية
+    create_tables(app)
     app.run(debug=True, host='127.0.0.1', port=5000)
 # تعليق جديد لتشغيل نشر جديد على Render
