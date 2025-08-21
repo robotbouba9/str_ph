@@ -43,10 +43,29 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 # تهيئة قاعدة البيانات
 init_database(app)
 
+# محاولة إنشاء الجداول تلقائياً في الإنتاج
+if os.environ.get('APP_ENV') == 'production':
+    try:
+        with app.app_context():
+            from database import create_tables
+            create_tables(app)
+            print("✅ تم إنشاء قاعدة البيانات تلقائياً")
+    except Exception as e:
+        print(f"⚠️ تحذير: لم يتم إنشاء قاعدة البيانات تلقائياً - {e}")
+        print("💡 يمكن إنشاؤها يدوياً عبر /init_database")
+
 # معالج الأخطاء للإنتاج
 @app.errorhandler(500)
 def internal_error(error):
-    db.session.rollback()
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    
+    # في بيئة التطوير، اعرض تفاصيل الخطأ
+    if app.debug or os.environ.get('APP_ENV') == 'development':
+        return f"<h1>خطأ داخلي في الخادم</h1><pre>{str(error)}</pre>", 500
+    
     return render_template('500.html'), 500
 
 @app.errorhandler(404)
@@ -118,16 +137,22 @@ def ensure_admin_user():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        user = User.query.filter_by(username=username, is_active=True).first()
-        if user and check_password_hash(user.password_hash, password):
-            session['user_id'] = user.id
-            session['user_name'] = user.username
-            session['user_role'] = user.role
-            flash('تم تسجيل الدخول بنجاح', 'success')
-            return redirect(url_for('index'))
-        flash('بيانات الدخول غير صحيحة', 'error')
+        try:
+            username = form.username.data
+            password = form.password.data
+            user = User.query.filter_by(username=username, is_active=True).first()
+            if user and check_password_hash(user.password_hash, password):
+                session['user_id'] = user.id
+                session['user_name'] = user.username
+                session['user_role'] = user.role
+                flash('تم تسجيل الدخول بنجاح', 'success')
+                return redirect(url_for('index'))
+            flash('بيانات الدخول غير صحيحة', 'error')
+        except Exception as e:
+            flash(f'خطأ في تسجيل الدخول: {str(e)}', 'error')
+            # إذا كانت المشكلة في قاعدة البيانات، اعرض رابط إنشاء قاعدة البيانات
+            if 'no such table' in str(e).lower() or 'relation' in str(e).lower():
+                flash('يبدو أن قاعدة البيانات غير مُنشأة. <a href="/init_database">انقر هنا لإنشائها</a>', 'warning')
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -145,10 +170,42 @@ def test_urls():
     except Exception as e:
         return f"Error building URL: {e}"
 
+@app.route('/health')
+def health_check():
+    """فحص حالة التطبيق"""
+    try:
+        # فحص قاعدة البيانات
+        db.session.execute('SELECT 1')
+        db_status = "OK"
+    except Exception as e:
+        db_status = f"Error: {str(e)}"
+    
+    return jsonify({
+        'status': 'OK',
+        'database': db_status,
+        'app_env': os.environ.get('APP_ENV', 'development')
+    })
+
+@app.route('/init_database')
+def init_database_route():
+    """إنشاء قاعدة البيانات والجداول - للاستخدام في الإنتاج"""
+    try:
+        from database import create_tables
+        create_tables(app)
+        return jsonify({
+            'success': True,
+            'message': 'تم إنشاء قاعدة البيانات بنجاح'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في إنشاء قاعدة البيانات: {str(e)}'
+        }), 500
+
 # حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
 @app.before_request
 def _require_login():
-    if request.endpoint in ('login', 'static'):
+    if request.endpoint in ('login', 'static', 'init_database_route', 'health_check'):
         return
     if not session.get('user_id'):
         # API تفضّل JSON عندما يطلب العميل JSON
@@ -160,28 +217,42 @@ def _require_login():
 @login_required()
 def index():
     """الصفحة الرئيسية"""
-    # إحصائيات سريعة
-    total_products = Product.query.count()
-    total_customers = Customer.query.count()
-    total_suppliers = Supplier.query.count()
+    try:
+        # إحصائيات سريعة
+        total_products = Product.query.count()
+        total_customers = Customer.query.count()
+        total_suppliers = Supplier.query.count()
+        
+        # المبيعات اليوم (استخدم نطاق زمني لتوافق أفضل بين SQLite/PostgreSQL)
+        today = datetime.now().date()
+        day_start = datetime.combine(today, datetime.min.time())
+        day_end = day_start + timedelta(days=1)
+        today_sales = Sale.query.filter(
+            Sale.created_at >= day_start,
+            Sale.created_at < day_end
+        ).all()
+        today_revenue = sum(sale.final_amount for sale in today_sales)
+    except Exception as e:
+        # في حالة عدم وجود جداول أو مشكلة في قاعدة البيانات
+        total_products = 0
+        total_customers = 0
+        total_suppliers = 0
+        today_sales = []
+        today_revenue = 0
+        flash(f'تحذير: مشكلة في قاعدة البيانات - {str(e)}', 'warning')
     
-    # المبيعات اليوم (استخدم نطاق زمني لتوافق أفضل بين SQLite/PostgreSQL)
-    today = datetime.now().date()
-    day_start = datetime.combine(today, datetime.min.time())
-    day_end = day_start + timedelta(days=1)
-    today_sales = Sale.query.filter(
-        Sale.created_at >= day_start,
-        Sale.created_at < day_end
-    ).all()
-    today_revenue = sum(sale.final_amount for sale in today_sales)
-    
-    # المنتجات منخفضة المخزون
-    low_stock_products = Product.query.filter(
-        Product.quantity <= Product.min_quantity
-    ).all()
-    
-    # أحدث المبيعات
-    recent_sales = Sale.query.order_by(Sale.created_at.desc()).limit(5).all()
+    try:
+        # المنتجات منخفضة المخزون
+        low_stock_products = Product.query.filter(
+            Product.quantity <= Product.min_quantity
+        ).all()
+        
+        # أحدث المبيعات
+        recent_sales = Sale.query.order_by(Sale.created_at.desc()).limit(5).all()
+    except Exception as e:
+        low_stock_products = []
+        recent_sales = []
+        flash(f'تحذير: مشكلة في استعلام البيانات - {str(e)}', 'warning')
     
     stats = {
         'total_products': total_products,
