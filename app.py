@@ -190,22 +190,129 @@ def health_check():
 def init_database_route():
     """إنشاء قاعدة البيانات والجداول - للاستخدام في الإنتاج"""
     try:
-        from database import create_tables
-        create_tables(app)
+        # إنشاء الجداول
+        db.create_all()
+        
+        # إنشاء سجل إعدادات افتراضي إن لم يوجد
+        if not StoreSettings.query.first():
+            settings = StoreSettings()
+            db.session.add(settings)
+            db.session.commit()
+
+        # إنشاء مستخدم admin افتراضي
+        from werkzeug.security import generate_password_hash
+        if not User.query.filter_by(username='admin').first():
+            user = User(
+                username='admin', 
+                password_hash=generate_password_hash('Admin@123'), 
+                role='admin', 
+                is_active=True
+            )
+            db.session.add(user)
+            db.session.commit()
+        
+        # إضافة بيانات تجريبية أساسية
+        if not Category.query.first():
+            categories = [
+                Category(name='هواتف ذكية', description='الهواتف المحمولة الذكية'),
+                Category(name='اكسسوارات', description='اكسسوارات الهواتف')
+            ]
+            for category in categories:
+                db.session.add(category)
+            db.session.commit()
+        
+        if not Brand.query.first():
+            brands = [
+                Brand(name='Samsung'),
+                Brand(name='iPhone'),
+                Brand(name='Huawei'),
+                Brand(name='Xiaomi')
+            ]
+            for brand in brands:
+                db.session.add(brand)
+            db.session.commit()
+        
         return jsonify({
             'success': True,
-            'message': 'تم إنشاء قاعدة البيانات بنجاح'
+            'message': 'تم إنشاء قاعدة البيانات بنجاح',
+            'details': {
+                'users_count': User.query.count(),
+                'categories_count': Category.query.count(),
+                'brands_count': Brand.query.count()
+            }
         })
     except Exception as e:
+        db.session.rollback()
         return jsonify({
             'success': False,
             'message': f'خطأ في إنشاء قاعدة البيانات: {str(e)}'
         }), 500
 
+@app.route('/reset_database')
+def reset_database_route():
+    """حذف وإعادة إنشاء قاعدة البيانات - للاستخدام في حالات الطوارئ"""
+    try:
+        # حذف جميع الجداول
+        db.drop_all()
+        
+        # إعادة إنشاء الجداول
+        db.create_all()
+        
+        # إنشاء سجل إعدادات افتراضي
+        settings = StoreSettings()
+        db.session.add(settings)
+        db.session.commit()
+
+        # إنشاء مستخدم admin افتراضي
+        from werkzeug.security import generate_password_hash
+        user = User(
+            username='admin', 
+            password_hash=generate_password_hash('Admin@123'), 
+            role='admin', 
+            is_active=True
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        # إضافة بيانات تجريبية أساسية
+        categories = [
+            Category(name='هواتف ذكية', description='الهواتف المحمولة الذكية'),
+            Category(name='اكسسوارات', description='اكسسوارات الهواتف')
+        ]
+        for category in categories:
+            db.session.add(category)
+        db.session.commit()
+        
+        brands = [
+            Brand(name='Samsung'),
+            Brand(name='iPhone'),
+            Brand(name='Huawei'),
+            Brand(name='Xiaomi')
+        ]
+        for brand in brands:
+            db.session.add(brand)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'تم إعادة تعيين قاعدة البيانات بنجاح',
+            'details': {
+                'users_count': User.query.count(),
+                'categories_count': Category.query.count(),
+                'brands_count': Brand.query.count()
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'خطأ في إعادة تعيين قاعدة البيانات: {str(e)}'
+        }), 500
+
 # حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
 @app.before_request
 def _require_login():
-    if request.endpoint in ('login', 'static', 'init_database_route', 'health_check'):
+    if request.endpoint in ('login', 'static', 'init_database_route', 'reset_database_route', 'health_check'):
         return
     if not session.get('user_id'):
         # API تفضّل JSON عندما يطلب العميل JSON
