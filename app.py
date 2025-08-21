@@ -309,10 +309,15 @@ def reset_database_route():
             'message': f'خطأ في إعادة تعيين قاعدة البيانات: {str(e)}'
         }), 500
 
+@app.route('/database_admin')
+def database_admin():
+    """صفحة إدارة قاعدة البيانات"""
+    return render_template('database_admin.html')
+
 # حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
 @app.before_request
 def _require_login():
-    if request.endpoint in ('login', 'static', 'init_database_route', 'reset_database_route', 'health_check'):
+    if request.endpoint in ('login', 'static', 'init_database_route', 'reset_database_route', 'health_check', 'database_admin'):
         return
     if not session.get('user_id'):
         # API تفضّل JSON عندما يطلب العميل JSON
