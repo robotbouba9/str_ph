@@ -7,7 +7,7 @@ from flask_wtf import CSRFProtect
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from database import (
-    db, init_database, User, Product, Sale, Category, Brand, 
+    db, init_database, create_tables, User, Product, Sale, Category, Brand, 
     Supplier, Customer, StoreSettings, Notification, 
     ActivityLog, AuditLog, Return, ReturnItem, PurchaseInvoice,
     PurchaseItem, SaleItem
