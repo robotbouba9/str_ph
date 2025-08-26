@@ -99,7 +99,7 @@ class Product(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)  # اسم المنتج
-    brand = db.Column(db.String(100), nullable=False)  # الماركة
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'))  # الماركة
     model = db.Column(db.String(100), nullable=False)  # الموديل
     color = db.Column(db.String(50))  # اللون
     description = db.Column(db.Text)  # وصف المنتج ومواصفاته
@@ -108,7 +108,7 @@ class Product(db.Model):
     quantity = db.Column(db.Integer, default=0)  # الكمية المتوفرة
     min_quantity = db.Column(db.Integer, default=5)  # الحد الأدنى للكمية
     barcode = db.Column(db.String(100), unique=True)  # الباركود
-    imei = db.Column(db.String(100), unique=True, nullable=True) # رقم IMEI
+    imei = db.Column(db.String(100), unique=True, nullable=True, index=True) # رقم IMEI
     warranty_period = db.Column(db.Integer, default=0) # مدة الضمان بالأيام
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))  # الفئة
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))

@@ -7,13 +7,18 @@ from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, N
 class UserForm(FlaskForm):
     username = StringField('اسم المستخدم', validators=[DataRequired(), Length(min=4, max=64)])
     password = PasswordField('كلمة المرور', validators=[Optional(), Length(min=6, max=128)])
-    role = SelectField('الدور', choices=[('admin', 'مدير'), ('cashier', 'كاشير'), ('inventory', 'مخزون')], validators=[DataRequired()])
+    role = SelectField('الدور', choices=[
+        ('admin', 'مدير النظام'),
+        ('manager', 'مدير متجر'),
+        ('cashier', 'كاشير'),
+        ('inventory', 'مسؤول مخزون')
+    ], validators=[DataRequired()])
     is_active = BooleanField('نشط')
     submit = SubmitField('حفظ المستخدم')
 
 class ProductForm(FlaskForm):
     name = StringField('اسم المنتج', validators=[DataRequired()])
-    brand = StringField('الماركة', validators=[DataRequired()])
+    brand_id = SelectField('الماركة', coerce=int, validators=[DataRequired()])
     model = StringField('الموديل', validators=[DataRequired()])
     color = StringField('اللون', validators=[Optional()])
     description = TextAreaField('الوصف', validators=[Optional()])
@@ -65,14 +70,14 @@ class SaleForm(FlaskForm):
     customer_id = SelectField('العميل', coerce=int, validators=[Optional()])
     total_amount = DecimalField('المبلغ الإجمالي', validators=[DataRequired(), NumberRange(min=0)])
     discount = DecimalField('الخصم', default=0, validators=[Optional(), NumberRange(min=0)])
-    payment_method = SelectField('طريقة الدفع', choices=[('Cash', 'نقداً'), ('Card', 'بطاقة'), ('Transfer', 'تحويل')], validators=[DataRequired()])
+    payment_method = SelectField('طريقة الدفع', choices=[('نقدي', 'نقدي'), ('بطاقة', 'بطاقة'), ('تحويل', 'تحويل')], validators=[DataRequired()])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
-    final_amount = DecimalField('المبلغ النهائي', validators=[Optional(), NumberRange(min=0)])
+    final_amount = DecimalField('المبلغ النهائي', validators=[DataRequired(), NumberRange(min=0)])
 
     submit = SubmitField('إتمام البيع')
 
 class ReturnForm(FlaskForm):
-    sale_id = StringField('رقم الفاتورة الأصلية', validators=[DataRequired()])
+    sale_id = SelectField('رقم الفاتورة الأصلية', coerce=int, validators=[DataRequired()])
     customer_id = SelectField('العميل', coerce=int, validators=[Optional()])
     total_amount = DecimalField('المبلغ الإجمالي للمرتجع', validators=[Optional(), NumberRange(min=0)])
     reason = TextAreaField('سبب الارجاع', validators=[Optional()])
