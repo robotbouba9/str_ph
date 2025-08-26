@@ -131,14 +131,25 @@
                             {{ product.price_sell|currency }}
                         </td>
                         <td>
-                            {% if product.quantity <= product.min_quantity %} <span class="badge bg-danger">{{
-                                product.quantity }}</span>
-                                <small class="text-danger d-block">منخفض المخزون</small>
-                                {% elif product.quantity <= product.min_quantity * 2 %} <span
-                                    class="badge bg-warning text-dark">{{ product.quantity }}</span>
-                                    {% else %}
-                                    <span class="badge bg-success">{{ product.quantity }}</span>
-                                    {% endif %}
+                            {% if product.quantity <= product.min_quantity %} 
+                                <span class="badge bg-danger">{{ product.quantity }}</span>
+                                <small class="text-danger d-block">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    منخفض المخزون (الحد الأدنى: {{ product.min_quantity }})
+                                </small>
+                            {% elif product.quantity <= product.min_quantity * 2 %} 
+                                <span class="badge bg-warning text-dark">{{ product.quantity }}</span>
+                                <small class="text-warning d-block">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    مخزون منخفض (الحد الأدنى: {{ product.min_quantity }})
+                                </small>
+                            {% else %}
+                                <span class="badge bg-success">{{ product.quantity }}</span>
+                                <small class="text-success d-block">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    كمية جيدة
+                                </small>
+                            {% endif %}
                         </td>
                         <td>
                             {% if product.supplier %}

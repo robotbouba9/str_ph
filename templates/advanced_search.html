@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}بحث متقدم - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-search-plus me-2"></i>
+            البحث المتقدم
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('products') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للمنتجات
+        </a>
+    </div>
+</div>
+
+<!-- نموذج البحث المتقدم -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-sliders-h me-2"></i>
+            معايير البحث
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="advancedSearchForm" class="row g-3">
+            <div class="col-md-4">
+                <label for="searchType" class="form-label">نوع البحث</label>
+                <select class="form-select" id="searchType" name="searchType">
+                    <option value="products">المنتجات</option>
+                    <option value="sales">المبيعات</option>
+                    <option value="customers">العملاء</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="searchQuery" class="form-label">البحث النصي</label>
+                <input type="text" class="form-control" id="searchQuery" name="searchQuery" placeholder="ابحث هنا...">
+            </div>
+            <div class="col-md-4">
+                <label for="category" class="form-label">الفئة</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">جميع الفئات</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="brand" class="form-label">الماركة</label>
+                <input type="text" class="form-control" id="brand" name="brand" placeholder="ابحث بالماركة...">
+            </div>
+            <div class="col-md-3">
+                <label for="minPrice" class="form-label">الحد الأدنى للسعر</label>
+                <input type="number" class="form-control" id="minPrice" name="minPrice" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-3">
+                <label for="maxPrice" class="form-label">الحد الأقصى للسعر</label>
+                <input type="number" class="form-control" id="maxPrice" name="maxPrice" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search me-2"></i>
+                    بحث
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- نتائج البحث -->
+<div class="card" id="searchResultsCard" style="display: none;">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            نتائج البحث
+            <span class="badge bg-primary ms-2" id="resultsCount">0</span>
+        </h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="exportSearchResults()">
+                <i class="fas fa-file-export me-1"></i>
+                تصدير
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="searchResultsTable">
+                <thead id="searchResultsTableHead">
+                    <!-- سيتم ملء هذا الجدول ديناميكياً -->
+                </thead>
+                <tbody id="searchResultsTableBody">
+                    <!-- سيتم ملء هذا الجدول ديناميكياً -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- رسالة التحميل -->
+<div class="text-center my-5" id="loadingMessage" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">جاري البحث...</span>
+    </div>
+    <p class="mt-2">جاري البحث في قاعدة البيانات...</p>
+</div>
+
+<!-- رسالة عدم وجود نتائج -->
+<div class="text-center my-5" id="noResultsMessage" style="display: none;">
+    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">لا توجد نتائج</h5>
+    <p class="text-muted">لم يتم العثور على أي نتائج تطابق معايير البحث الخاصة بك</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('advancedSearchForm');
+
+    // عند تغيير نوع البحث
+    document.getElementById('searchType').addEventListener('change', function() {
+        // إظهار/إخفاء حقول البحث حسب النوع
+        const searchType = this.value;
+        const categoryField = document.getElementById('category').closest('.col-md-4');
+        const brandField = document.getElementById('brand').closest('.col-md-3');
+        const priceFields = document.getElementById('minPrice').closest('.col-md-3');
+        const priceFields2 = document.getElementById('maxPrice').closest('.col-md-3');
+
+        if (searchType === 'products') {
+            categoryField.style.display = 'block';
+            brandField.style.display = 'block';
+            priceFields.style.display = 'block';
+            priceFields2.style.display = 'block';
+        } else {
+            categoryField.style.display = 'none';
+            brandField.style.display = 'none';
+            priceFields.style.display = 'none';
+            priceFields2.style.display = 'none';
+        }
+    });
+
+    // عند إرسال النموذج
+    searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const searchType = document.getElementById('searchType').value;
+        const searchQuery = document.getElementById('searchQuery').value;
+        const categoryId = document.getElementById('category').value;
+        const brand = document.getElementById('brand').value;
+        const minPrice = document.getElementById('minPrice').value;
+        const maxPrice = document.getElementById('maxPrice').value;
+
+        // إخفاء العناصر غير الضرورية
+        document.getElementById('loadingMessage').style.display = 'block';
+        document.getElementById('noResultsMessage').style.display = 'none';
+        document.getElementById('searchResultsCard').style.display = 'none';
+
+        // بناء رابط الطلب
+        let url = `/api/advanced_search?type=${searchType}`;
+
+        if (searchQuery) url += `&query=${encodeURIComponent(searchQuery)}`;
+        if (categoryId) url += `&category_id=${categoryId}`;
+        if (brand) url += `&brand=${encodeURIComponent(brand)}`;
+        if (minPrice) url += `&min_price=${minPrice}`;
+        if (maxPrice) url += `&max_price=${maxPrice}`;
+
+        // جلب نتائج البحث
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displaySearchResults(data.results, searchType);
+                } else {
+                    showError(data.message || 'حدث خطأ غير متوقع');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('حدث خطأ في الاتصال بالخادم');
+            })
+            .finally(() => {
+                document.getElementById('loadingMessage').style.display = 'none';
+            });
+    });
+
+    function displaySearchResults(results, searchType) {
+        // عرض عدد النتائج
+        document.getElementById('resultsCount').textContent = results.length;
+
+        // تحديد رأس الجدول
+        const tableHead = document.getElementById('searchResultsTableHead');
+        const tableBody = document.getElementById('searchResultsTableBody');
+
+        // مسح الجدول الحالي
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        // إضافة رأس الجدول المناسب
+        if (searchType === 'products') {
+            tableHead.innerHTML = `
+                <tr>
+                    <th>الاسم</th>
+                    <th>الفئة</th>
+                    <th>الماركة</th>
+                    <th>الموديل</th>
+                    <th>اللون</th>
+                    <th>سعر البيع</th>
+                    <th>الكمية</th>
+                    <th>الإجراءات</th>
+                </tr>
+            `;
+
+            // إضافة النتائج
+            results.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${product.name}</strong>
+                        ${product.barcode ? `<br><small class="text-muted">${product.barcode}</small>` : ''}
+                    </td>
+                    <td>${product.category_name || '-'}</td>
+                    <td>${product.brand}</td>
+                    <td>${product.model}</td>
+                    <td>${product.color || '-'}</td>
+                    <td>${formatCurrency(product.price_sell)}</td>
+                    <td>
+                        ${product.quantity <= product.min_quantity ? 
+                            `<span class="badge bg-danger">${product.quantity}</span>` : 
+                            `<span class="badge bg-success">${product.quantity}</span>`
+                        }
+                    </td>
+                    <td>
+                        <a href="/edit_product/${product.id}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        } else if (searchType === 'sales') {
+            tableHead.innerHTML = `
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>التاريخ</th>
+                    <th>العميل</th>
+                    <th>إجمالي المبيعات</th>
+                    <th>طريقة الدفع</th>
+                    <th>الإجراءات</th>
+                </tr>
+            `;
+
+            // إضافة النتائج
+            results.forEach(sale => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>#${sale.id}</td>
+                    <td>${formatDate(sale.created_at)}</td>
+                    <td>${sale.customer_name || 'عميل غير محدد'}</td>
+                    <td>${formatCurrency(sale.final_amount)}</td>
+                    <td>${sale.payment_method}</td>
+                    <td>
+                        <a href="/view_sale/${sale.id}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        } else if (searchType === 'customers') {
+            tableHead.innerHTML = `
+                <tr>
+                    <th>الاسم</th>
+                    <th>الهاتف</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>العنوان</th>
+                    <th>تاريخ الإضافة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            `;
+
+            // إضافة النتائج
+            results.forEach(customer => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${customer.name}</td>
+                    <td>${customer.phone || '-'}</td>
+                    <td>${customer.email || '-'}</td>
+                    <td>${customer.address || '-'}</td>
+                    <td>${formatDate(customer.created_at)}</td>
+                    <td>
+                        <a href="/edit_customer/${customer.id}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // عرض نتيجة البحث
+        if (results.length > 0) {
+            document.getElementById('searchResultsCard').style.display = 'block';
+        } else {
+            document.getElementById('noResultsMessage').style.display = 'block';
+        }
+    }
+
+    function showError(message) {
+        // عرض رسالة خطأ
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        const container = document.querySelector('.main-content');
+        container.insertBefore(alertDiv, container.firstChild);
+
+        // إخفاء الرسالة بعد 5 ثواني
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 150);
+        }, 5000);
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('ar-DZ', {
+            style: 'currency',
+            currency: 'DZD'
+        }).format(value);
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ar-DZ', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+    }
+
+    function exportSearchResults() {
+        // تنفيذ تصدير النتائج
+        const searchType = document.getElementById('searchType').value;
+        const searchQuery = document.getElementById('searchQuery').value;
+
+        // هنا يمكنك إضافة منطق تصدير النتائج
+        alert('سيتم إضافة ميزة التصدير قريباً');
+    }
+});
+</script>
+{% endblock %}

@@ -7,6 +7,14 @@
     <title>{% block title %}برنامج إدارة مخزون محل الهواتف{% endblock %}</title>
 
     <!-- Bootstrap CSS -->
+    <!-- Bootstrap CSS -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+    <!-- Bootstrap Icons -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet"> -->
+    <!-- Font Awesome -->
+    <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"> -->
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -166,91 +174,20 @@
             }
         }
 
-        /* In-App Bot Styles */
-        .in-app-bot-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            height: 450px;
-            background-color: #fff;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .in-app-bot-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border-radius: 15px 15px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .in-app-bot-body {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 15px;
-            overflow-y: auto;
-        }
-
-        .chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 10px;
-        }
-
-        .chat-message {
-            background-color: #f1f1f1;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            max-width: 80%;
-        }
-
-        .chat-message.user {
-            background-color: #e0f7fa;
-            margin-left: auto;
-        }
-
-        .chat-message.bot {
-            background-color: #e8f5e9;
-            margin-right: auto;
-        }
-
-        .chat-input {
-            display: flex;
-            border-top: 1px solid #eee;
-            padding-top: 10px;
-        }
-
-        .chat-input input {
-            flex-grow: 1;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-left: 10px;
-        }
-
-        .chat-input button {
-            border-radius: 8px;
-            padding: 8px 15px;
-        }
+        /* تم إزالة CSS المساعد الذكي */
     </style>
 
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
+    <!-- Notification Bar -->
+    <div id="notification-bar" class="alert alert-info alert-dismissible fade text-center"
+        style="display: none; margin-bottom: 0;">
+        <strong id="notification-bar-title"></strong>
+        <span id="notification-bar-message"></span>
+    </div>
+
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
@@ -265,22 +202,33 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    {% if current_user %}
+                    {% if session.user_id %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user me-1"></i> {{ current_user.username }} ({{ current_user.role }})
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                            data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>
+                            {{ session.username }}
+                            <span class="badge bg-secondary ms-1">{{ session.user_role }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i
-                                        class="fas fa-sign-out-alt me-2"></i>تسجيل الخروج</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('notifications_page') }}">
+                                    <i class="fas fa-bell me-2"></i>الإشعارات
+                                </a></li>
+                            {% if session.user_role in ['owner', 'admin'] %}
+                            <li><a class="dropdown-item" href="{{ url_for('settings_page') }}">
+                                    <i class="fas fa-cog me-2"></i>الإعدادات
+                                </a></li>
+                            {% endif %}
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>تسجيل الخروج
+                                </a></li>
                         </ul>
                     </li>
-                    {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt me-1"></i>تسجيل
-                            الدخول</a>
-                    </li>
                     {% endif %}
+
                     <li class="nav-item">
                         <span class="navbar-text ms-3">
                             <i class="fas fa-clock me-1"></i>
@@ -308,6 +256,12 @@
                             href="{{ url_for('products') }}">
                             <i class="fas fa-mobile-alt"></i>
                             المنتجات
+                        </a>
+
+                        <a class="nav-link {% if request.endpoint == 'advanced_search_page' %}active{% endif %}"
+                            href="{{ url_for('advanced_search_page') }}">
+                            <i class="fas fa-search-plus"></i>
+                            بحث متقدم
                         </a>
 
                         <a class="nav-link {% if request.endpoint in ['categories', 'add_category', 'edit_category'] %}active{% endif %}"
@@ -340,7 +294,16 @@
                             إدارة المرتجعات
                         </a>
 
-
+                        <a class="nav-link {% if request.endpoint == 'notifications_page' %}active{% endif %}"
+                            href="{{ url_for('notifications_page') }}">
+                            <i class="fas fa-bell"></i>
+                            الإشعارات
+                            {% if notifications and notifications|selectattr('read', 'equalto', false)|list|length > 0
+                            %}
+                            <span class="badge bg-danger ms-auto">{{ notifications|selectattr('read', 'equalto',
+                                false)|list|length }}</span>
+                            {% endif %}
+                        </a>
 
                         {% if current_user %}
                         <a class="nav-link {% if request.endpoint in ['purchases', 'new_purchase', 'view_purchase'] %}active{% endif %}"
@@ -370,19 +333,48 @@
                             التقارير المتقدمة
                         </a>
 
-                        <a class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}"
-                            href="{{ url_for('settings_page') }}">
-                            <i class="fas fa-gear"></i>
-                            إعدادات المتجر
+                        <!-- قسم السجلات والمراجعة -->
+                        {% if session.user_role in ['owner', 'admin'] %}
+                        <hr class="my-3">
+                        <h6
+                            class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>السجلات والمراجعة</span>
+                        </h6>
+
+                        <a class="nav-link {% if request.endpoint == 'activity_logs' %}active{% endif %}"
+                            href="{{ url_for('activity_logs') }}">
+                            <i class="fas fa-history"></i>
+                            سجل الأنشطة
                         </a>
 
-                        {% if current_user and current_user.role == 'admin' %}
-                        <a class="nav-link {% if request.endpoint in ['users_list', 'user_new', 'user_edit'] %}active{% endif %}"
-                            href="{{ url_for('users_list') }}">
-                            <i class="fas fa-users-cog"></i>
-                            إدارة المستخدمين
+                        <a class="nav-link {% if request.endpoint == 'audit_logs' %}active{% endif %}"
+                            href="{{ url_for('audit_logs') }}">
+                            <i class="fas fa-shield-alt"></i>
+                            سجل المراجعة
                         </a>
                         {% endif %}
+
+                        <!-- قسم الإعدادات -->
+                        {% if session.user_role in ['owner', 'admin'] %}
+                        <hr class="my-3">
+                        <h6
+                            class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>الإعدادات</span>
+                        </h6>
+
+                        <a class="nav-link {% if request.endpoint == 'users_list' %}active{% endif %}"
+                            href="{{ url_for('users_list') }}">
+                            <i class="fas fa-users"></i>
+                            إدارة المستخدمين
+                        </a>
+
+                        <a class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}"
+                            href="{{ url_for('settings_page') }}">
+                            <i class="fas fa-cog"></i>
+                            إعدادات المتجر
+                        </a>
+                        {% endif %}
+
                     </nav>
                 </div>
             </div>
@@ -408,26 +400,15 @@
                     <!-- Page Content -->
                     {% block content %}{% endblock %}
 
-                    <!-- In-App Bot Interface -->
-                    <div id="inAppBot" class="in-app-bot-container">
-                        <div class="in-app-bot-header">
-                            <i class="fas fa-robot me-2"></i> مساعد المتجر
-                            <button id="closeBot" class="btn-close" aria-label="Close"></button>
-                        </div>
-                        <div class="in-app-bot-body">
-                            <div id="chatMessages" class="chat-messages"></div>
-                            <div class="chat-input">
-                                <input type="text" id="botInput" placeholder="اكتب سؤالك هنا...">
-                                <button id="sendBotMessage" class="btn btn-primary btn-sm">إرسال</button>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- تم إزالة المساعد الذكي -->
 
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Bootstrap JS -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -475,91 +456,7 @@
 
     {% block extra_js %}{% endblock %}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const inAppBot = document.getElementById('inAppBot');
-            const closeBotBtn = document.getElementById('closeBot');
-            const botInput = document.getElementById('botInput');
-            const sendBotMessageBtn = document.getElementById('sendBotMessage');
-            const chatMessages = document.getElementById('chatMessages');
-
-            // Initially hide the bot
-            inAppBot.style.display = 'none';
-
-            // Toggle bot visibility (you'll need a button to open it)
-            // For now, let's add a simple way to show it for testing
-            // You might want to add a floating action button or a menu item
-            function toggleBot() {
-                if (inAppBot.style.display === 'none') {
-                    inAppBot.style.display = 'flex';
-                } else {
-                    inAppBot.style.display = 'none';
-                }
-            }
-
-            // Close bot button
-            closeBotBtn.addEventListener('click', function() {
-                inAppBot.style.display = 'none';
-            });
-
-            // Send message function
-            function sendMessage() {
-                const message = botInput.value.trim();
-                if (message) {
-                    appendMessage(message, 'user');
-                    botInput.value = '';
-                    // Send message to backend for processing
-                    fetch(`/api/bot_search?query=${encodeURIComponent(message)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.length > 0) {
-                                let botResponse = 'Here are some products I found:\n';
-                                data.forEach(product => {
-                                    botResponse += `- ${product.name} (${product.brand} ${product.model}) - Price: $${product.price_sell}\n`;
-                                });
-                                appendMessage(botResponse, 'bot');
-                            } else {
-                                appendMessage('Sorry, I could not find any products matching your query.', 'bot');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            appendMessage('An error occurred while searching for products.', 'bot');
-                        });
-                }
-            }
-
-            // Append message to chat window
-            function appendMessage(text, sender) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('chat-message', sender);
-                messageDiv.textContent = text;
-                chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
-            }
-
-            // Event listeners for sending messages
-            sendBotMessageBtn.addEventListener('click', sendMessage);
-            botInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
-
-            // Temporary: Add a button to open the bot for testing purposes
-            // You can remove this later and integrate it into your UI properly
-            const openBotButton = document.createElement('button');
-            openBotButton.textContent = 'افتح المساعد';
-            openBotButton.style.position = 'fixed';
-            openBotButton.style.bottom = '20px';
-            openBotButton.style.left = '20px';
-            openBotButton.style.zIndex = '1001';
-            openBotButton.classList.add('btn', 'btn-info');
-            openBotButton.addEventListener('click', toggleBot);
-            document.body.appendChild(openBotButton);
-
-        });
-    </script>
+    <!-- تم إزالة JavaScript المساعد الذكي -->
 </body>
 
 </html>

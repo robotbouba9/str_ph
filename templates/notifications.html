@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}الإشعارات - برنامج إدارة مخزون محل الهواتف{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-bell me-2"></i>
+            الإشعارات
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i>
+            العودة للرئيسية
+        </a>
+    </div>
+</div>
+
+<!-- إحصائيات الإشعارات -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ notifications|length }}</h5>
+                <p class="card-text">مجموع الإشعارات</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info" id="unread-count">{{ notifications|selectattr('read', 'equalto', false)|list|length }}</h5>
+                <p class="card-text">إشعارات غير مقروءة</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">{{ notifications|selectattr('type', 'equalto', 'low_stock')|list|length }}</h5>
+                <p class="card-text">إشعارات مخزون</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">{{ notifications|selectattr('type', 'equalto', 'sale')|list|length }}</h5>
+                <p class="card-text">إشعارات مبيعات</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- قائمة الإشعارات -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            قائمة الإشعارات
+        </h5>
+        <div>
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="markAllAsRead()">
+                <i class="fas fa-check-double me-1"></i>
+                تحديد الكل كمقروء
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if notifications %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>الإشعار</th>
+                        <th>النوع</th>
+                        <th>التاريخ والوقت</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for notification in notifications %}
+                    <tr>
+                        <td>
+                            <div>
+                                <h6 class="mb-1">{{ notification.title }}</h6>
+                                <p class="mb-0 text-muted">{{ notification.message }}</p>
+                                {% if notification.product_name %}
+                                <small class="text-muted">المنتج: {{ notification.product_name }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge {% if notification.type == 'low_stock' %}bg-danger{% elif notification.type == 'sale' %}bg-success{% else %}bg-primary{% endif %}">
+                                {% if notification.type == 'low_stock' %}مخزون{% elif notification.type == 'sale' %}مبيعات{% else %}نظام{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ notification.timestamp }}</small>
+                        </td>
+                        <td>
+                            {% if notification.read %}
+                            <span class="badge bg-success">مقروء</span>
+                            {% else %}
+                            <span class="badge bg-warning">غير مقروء</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                {% if not notification.read %}
+                                <button class="btn btn-sm btn-outline-primary" onclick="markAsRead({{ notification.id }})" title="تحديد كمقروء">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteNotification({{ notification.id }})" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد إشعارات</h5>
+            <p class="text-muted">سيتم عرض الإشعارات هنا عند توفرها</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markAsRead(notificationId) {
+    fetch(`/notifications/mark_read/${notificationId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // تحديث الصفحة أو تحديث حالة الإشعار
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء تحديث الإشعار');
+    });
+}
+
+function markAllAsRead() {
+    fetch('/notifications/mark_all_read', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // تحديث الصفحة
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ أثناء تحديث الإشعارات');
+    });
+}
+
+function deleteNotification(notificationId) {
+    if (confirm('هل أنت متأكد من حذف هذا الإشعار؟')) {
+        fetch(`/notifications/delete/${notificationId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // تحديث الصفحة
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء حذف الإشعار');
+        });
+    }
+}
+</script>
+{% endblock %}

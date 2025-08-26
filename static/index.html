@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>AI Agent</title>
+    <title>مساعد الذكاء الاصطناعي</title>
     <style>
         body {
             background: #121212;
@@ -348,7 +348,7 @@
             msgBox.value = "";
 
             try {
-                const res = await fetch("http://localhost:8000/ask", {   // ⬅️ الاتصال بخادم Groq المنفصل
+                const res = await fetch("http://127.0.0.1:5000/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: userMessage })
@@ -403,7 +403,7 @@
             resultDiv.innerHTML = `<div class="analysis">🔄 جاري تحليل الكود...</div>`;
 
             try {
-                const response = await fetch("http://localhost:8000/analyze", {
+                const response = await fetch("http://127.0.0.1:5000/analyze", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -454,7 +454,7 @@
         // إدارة الملفات
         async function loadFiles(directory = "") {
             try {
-                const response = await fetch(`http://localhost:8000/files?dir=${directory}`);
+                const response = await fetch(`http://127.0.0.1:5000/files?dir=${directory}`);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -516,7 +516,7 @@
 
             // تحميل محتوى الملف
             try {
-                const response = await fetch(`http://localhost:8000/file?path=${file.path}`);
+                const response = await fetch(`http://127.0.0.1:5000/file?path=${file.path}`);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -540,7 +540,7 @@
             const content = document.getElementById('file-content').value;
 
             try {
-                const response = await fetch('http://localhost:8000/file', {
+                const response = await fetch('http://127.0.0.1:5000/file', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -587,7 +587,7 @@
             commandInput.value = '';
 
             try {
-                const response = await fetch('http://localhost:8000/execute', {
+                const response = await fetch('http://127.0.0.1:5000/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ command: command })
@@ -632,6 +632,7 @@
             }
         });
     </script>
+
 </body>
 
 </html>

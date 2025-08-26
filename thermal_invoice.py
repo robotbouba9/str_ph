@@ -19,7 +19,43 @@ class ThermalInvoiceGenerator:
     
     def __init__(self):
         self.width = 80 * mm  # عرض الفاتورة الحرارية
-        self.height = 200 * mm  # ارتفاع افتراضي
+        self.height = 120 * mm  # ارتفاع مناسب للطابعات الحرارية الحديثة
+
+        # تسجيل الخطوط العربية
+        try:
+            pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+            pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
+            pdfmetrics.registerFont(TTFont('Arabic', 'arial.ttf')) # Fallback or specific Arabic font
+        except Exception as e:
+            print(f"Error registering fonts: {e}")
+
+        # تعريف الأنماط مع الخطوط العربية
+        self.arabic_normal_style = ParagraphStyle(
+            'ArabicNormal',
+            parent=getSampleStyleSheet()['Normal'],
+            fontName='Arabic',
+            fontSize=7,
+            alignment=TA_RIGHT,
+            spaceAfter=0.5
+        )
+        self.arabic_title_style = ParagraphStyle(
+            'ArabicTitle',
+            parent=getSampleStyleSheet()['Heading1'],
+            fontName='Arabic',
+            fontSize=10,
+            alignment=TA_CENTER,
+            spaceAfter=2,
+            textColor=colors.black
+        )
+        self.arabic_final_style = ParagraphStyle(
+            'ArabicFinal',
+            parent=getSampleStyleSheet()['Normal'],
+            fontName='Arabic',
+            fontSize=9,
+            alignment=TA_RIGHT,
+            spaceAfter=1,
+            textColor=colors.black
+        )
         
     def generate_sale_invoice(self, sale, store_settings=None):
         """إنشاء فاتورة بيع حرارية"""
@@ -29,42 +65,16 @@ class ThermalInvoiceGenerator:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=(self.width, self.height),
-            rightMargin=5*mm,
-            leftMargin=5*mm,
-            topMargin=5*mm,
-            bottomMargin=5*mm
+            rightMargin=2*mm,
+            leftMargin=2*mm,
+            topMargin=2*mm,
+            bottomMargin=2*mm
         )
         
         # إعداد الأنماط
-        styles = getSampleStyleSheet()
-        
-        # نمط العنوان
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            parent=styles['Heading1'],
-            fontSize=12,
-            alignment=TA_CENTER,
-            spaceAfter=6,
-            textColor=colors.black
-        )
-        
-        # نمط النص العادي
-        normal_style = ParagraphStyle(
-            'NormalStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=TA_CENTER,
-            spaceAfter=3
-        )
-        
-        # نمط النص المحاذي لليمين
-        right_style = ParagraphStyle(
-            'RightStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=TA_RIGHT,
-            spaceAfter=3
-        )
+        title_style = self.arabic_title_style
+        normal_style = self.arabic_normal_style
+        right_style = self.arabic_normal_style
         
         story = []
         
@@ -78,7 +88,7 @@ class ThermalInvoiceGenerator:
         if store_settings and store_settings.phone:
             story.append(Paragraph(f"هاتف: {store_settings.phone}", normal_style))
         
-        story.append(Spacer(1, 5*mm))
+        story.append(Spacer(1, 0.5*mm))
         
         # معلومات الفاتورة
         story.append(Paragraph("فاتورة بيع", title_style))
@@ -88,7 +98,7 @@ class ThermalInvoiceGenerator:
         if sale.customer:
             story.append(Paragraph(f"العميل: {sale.customer.name}", right_style))
         
-        story.append(Spacer(1, 3*mm))
+        story.append(Spacer(1, 1*mm))
         
         # جدول المنتجات
         data = [['المنتج', 'الكمية', 'السعر', 'المجموع']]
@@ -108,40 +118,31 @@ class ThermalInvoiceGenerator:
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 3),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         
         story.append(table)
-        story.append(Spacer(1, 3*mm))
+        story.append(Spacer(1, 1*mm))
         
         # المجاميع
         currency = store_settings.currency_symbol if store_settings else "د.ج"
         
-        story.append(Paragraph(f"المجموع الفرعي: {sale.subtotal:.2f} {currency}", right_style))
+        story.append(Paragraph(f"المجموع الفرعي: {sale.subtotal:.2f} {currency}", self.arabic_normal_style))
         
         if sale.discount_amount > 0:
-            story.append(Paragraph(f"الخصم: {sale.discount_amount:.2f} {currency}", right_style))
+            story.append(Paragraph(f"الخصم: {sale.discount_amount:.2f} {currency}", self.arabic_normal_style))
         
         if sale.tax_amount > 0:
-            story.append(Paragraph(f"الضريبة: {sale.tax_amount:.2f} {currency}", right_style))
+            story.append(Paragraph(f"الضريبة: {sale.tax_amount:.2f} {currency}", self.arabic_normal_style))
         
         # المجموع النهائي
-        final_style = ParagraphStyle(
-            'FinalStyle',
-            parent=styles['Normal'],
-            fontSize=10,
-            alignment=TA_RIGHT,
-            spaceAfter=3,
-            textColor=colors.black
-        )
+        story.append(Paragraph(f"<b>المجموع النهائي: {sale.final_amount:.2f} {currency}</b>", self.arabic_final_style))
         
-        story.append(Paragraph(f"<b>المجموع النهائي: {sale.final_amount:.2f} {currency}</b>", final_style))
-        
-        story.append(Spacer(1, 5*mm))
+        story.append(Spacer(1, 1*mm))
         
         # رسالة الشكر
         story.append(Paragraph("شكراً لزيارتكم", normal_style))
@@ -160,38 +161,16 @@ class ThermalInvoiceGenerator:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=(self.width, self.height),
-            rightMargin=5*mm,
-            leftMargin=5*mm,
-            topMargin=5*mm,
-            bottomMargin=5*mm
+            rightMargin=2*mm,
+            leftMargin=2*mm,
+            topMargin=2*mm,
+            bottomMargin=2*mm
         )
         
         # إعداد الأنماط
-        styles = getSampleStyleSheet()
-        
-        title_style = ParagraphStyle(
-            'TitleStyle',
-            parent=styles['Heading1'],
-            fontSize=12,
-            alignment=TA_CENTER,
-            spaceAfter=6
-        )
-        
-        normal_style = ParagraphStyle(
-            'NormalStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=TA_CENTER,
-            spaceAfter=3
-        )
-        
-        right_style = ParagraphStyle(
-            'RightStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=TA_RIGHT,
-            spaceAfter=3
-        )
+        title_style = self.arabic_title_style
+        normal_style = self.arabic_normal_style
+        right_style = self.arabic_normal_style
         
         story = []
         
@@ -199,7 +178,7 @@ class ThermalInvoiceGenerator:
         store_name = store_settings.store_name if store_settings else "متجر الهواتف"
         story.append(Paragraph(store_name, title_style))
         
-        story.append(Spacer(1, 5*mm))
+        story.append(Spacer(1, 0.5*mm))
         
         # معلومات الفاتورة
         story.append(Paragraph("فاتورة شراء", title_style))
@@ -209,7 +188,7 @@ class ThermalInvoiceGenerator:
         if purchase.supplier:
             story.append(Paragraph(f"المورد: {purchase.supplier.name}", right_style))
         
-        story.append(Spacer(1, 3*mm))
+        story.append(Spacer(1, 0.5*mm))
         
         # جدول المنتجات
         data = [['المنتج', 'الكمية', 'السعر', 'المجموع']]
@@ -229,15 +208,15 @@ class ThermalInvoiceGenerator:
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 3),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
         ]))
         
         story.append(table)
-        story.append(Spacer(1, 3*mm))
+        story.append(Spacer(1, 0.5*mm))
         
         # المجموع النهائي
         currency = store_settings.currency_symbol if store_settings else "د.ج"
@@ -245,9 +224,9 @@ class ThermalInvoiceGenerator:
         final_style = ParagraphStyle(
             'FinalStyle',
             parent=styles['Normal'],
-            fontSize=10,
+            fontSize=8,
             alignment=TA_RIGHT,
-            spaceAfter=3
+            spaceAfter=1
         )
         
         story.append(Paragraph(f"<b>المجموع النهائي: {purchase.total_amount:.2f} {currency}</b>", final_style))

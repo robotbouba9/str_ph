@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد البرمجة الذكي</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4a6fdc, #2c3e50);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background-color: #4a6fdc;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.ai .message-content {
+            background-color: #e9ecef;
+            color: #212529;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            border-radius: 25px;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+        }
+
+        .chat-input button {
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #4a6fdc;
+            color: white;
+            border: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            background-color: #e9ecef;
+            border-radius: 18px;
+            max-width: 70%;
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #6c757d;
+            display: inline-block;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: blink 1.4s infinite both;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.2;
+            }
+
+            30% {
+                opacity: 1;
+            }
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 10px;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            background-color: #f8d7da;
+            display: none;
+        }
+
+        .back-button {
+            position: absolute;
+            left: 15px;
+            top: 15px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.2rem;
+        }
+
+        /* تنسيق الكود */
+        pre {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        code {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .copy-button:hover {
+            background: #2d3748;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/" class="back-button"><i class="fas fa-arrow-left"></i></a>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h4><i class="fas fa-code me-2"></i>مساعد البرمجة الذكي</h4>
+            <div>
+                <a href="/files" class="btn btn-sm btn-light me-2" title="إدارة الملفات">
+                    <i class="fas fa-folder-open"></i>
+                </a>
+                <a href="/chat/history" class="btn btn-sm btn-light me-2" title="تاريخ المحادثات">
+                    <i class="fas fa-history"></i>
+                </a>
+                <button class="btn btn-sm btn-light" onclick="clearChat()" title="مسح المحادثة">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai">
+                <div class="message-content">
+                    <p>مرحباً! أنا مساعد البرمجة الذكي. يمكنني مساعدتك في:</p>
+                    <ul>
+                        <li>كتابة وتصحيح أكواد Python/Flask</li>
+                        <li>إنشاء استعلامات قاعدة البيانات</li>
+                        <li>تصميم واجهات HTML/CSS</li>
+                        <li>حل الأخطاء البرمجية</li>
+                        <li>تحسين الأداء والكود</li>
+                        <li>إضافة ميزات جديدة</li>
+                    </ul>
+                    <p>ما المهمة البرمجية التي تحتاج مساعدة فيها؟</p>
+                    <div class="message-time">الآن</div>
+                </div>
+            </div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+        <div class="chat-input-container">
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="اكتب رسالتك هنا..."
+                    onkeypress="handleKeyPress(event)">
+                <button id="sendButton" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="status" id="status">جاهز للمساعدة</div>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            console.log('sendMessage function called'); // New log
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+
+            if (message === '') return;
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            console.log('Sending message to /ask:', message); // Add this line
+
+            // إظهار مؤشر الكتابة
+            document.getElementById('typingIndicator').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('status').textContent = 'جاري البحث عن إجابة...';
+
+            // إرسال الرسالة إلى الخادم
+            fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // إخفاء مؤشر الكتابة
+                    document.getElementById('typingIndicator').style.display = 'none';
+                    document.getElementById('status').textContent = 'جاهز للمساعدة';
+                    addMessage(data.reply, 'ai');
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    document.getElementById('typingIndicator').style.display = 'none';
+                    document.getElementById('status').textContent = 'حدث خطأ';
+                    document.getElementById('errorMessage').textContent = 'حدث خطأ في الاتصال بالذكاء الاصطناعي: ' + error.message;
+                    document.getElementById('errorMessage').style.display = 'block';
+                });
+        }
+
+        function addMessage(text, sender) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            const messageContentDiv = document.createElement('div');
+            messageContentDiv.classList.add('message-content');
+
+            // تحويل النص لدعم الكود والتنسيق
+            let formattedText = text;
+
+            // تحويل الكود المحاط بـ ``` إلى عناصر pre
+            formattedText = formattedText.replace(/```(\w+)?\n([\s\S]*?)```/g, function (match, lang, code) {
+                const language = lang || 'python';
+                return `<pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`;
+            });
+
+            // تحويل الكود المحاط بـ ` إلى عناصر code
+            formattedText = formattedText.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // تحويل أسطر جديدة إلى <br>
+            formattedText = formattedText.replace(/\n/g, '<br>');
+
+            messageContentDiv.innerHTML = `<div>${formattedText}</div><div class="message-time">الآن</div>`;
+
+            messageDiv.appendChild(messageContentDiv);
+            chatMessages.appendChild(messageDiv);
+
+            // التمرير لأسفل لعرض أحدث رسالة
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function clearChat() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = `
+                <div class="message ai">
+                    <div class="message-content">
+                        <p>مرحباً! أنا مساعد البرمجة الذكي. يمكنني مساعدتك في:</p>
+                        <ul>
+                            <li>كتابة وتصحيح أكواد Python/Flask</li>
+                            <li>إنشاء استعلامات قاعدة البيانات</li>
+                            <li>تصميم واجهات HTML/CSS</li>
+                            <li>حل الأخطاء البرمجية</li>
+                            <li>تحسين الأداء والكود</li>
+                            <li>إضافة ميزات جديدة</li>
+                        </ul>
+                        <p>ما المهمة البرمجية التي تحتاج مساعدة فيها؟</p>
+                        <div class="message-time">الآن</div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+
+</html>

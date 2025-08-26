@@ -2,11 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, DecimalField, IntegerField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, Optional, NumberRange
 
-class LoginForm(FlaskForm):
-    username = StringField('اسم المستخدم', validators=[DataRequired()])
-    password = PasswordField('كلمة المرور', validators=[DataRequired()])
-    remember_me = BooleanField('تذكرني')
-    submit = SubmitField('تسجيل الدخول')
+
 
 class UserForm(FlaskForm):
     username = StringField('اسم المستخدم', validators=[DataRequired(), Length(min=4, max=64)])
@@ -71,7 +67,8 @@ class SaleForm(FlaskForm):
     discount = DecimalField('الخصم', default=0, validators=[Optional(), NumberRange(min=0)])
     payment_method = SelectField('طريقة الدفع', choices=[('Cash', 'نقداً'), ('Card', 'بطاقة'), ('Transfer', 'تحويل')], validators=[DataRequired()])
     notes = TextAreaField('ملاحظات', validators=[Optional()])
-    final_amount = DecimalField('المبلغ النهائي', validators=[DataRequired(), NumberRange(min=0)])
+    final_amount = DecimalField('المبلغ النهائي', validators=[Optional(), NumberRange(min=0)])
+
     submit = SubmitField('إتمام البيع')
 
 class ReturnForm(FlaskForm):

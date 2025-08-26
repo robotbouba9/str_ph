@@ -67,7 +67,23 @@ class Config:
     # إعدادات الملفات
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     UPLOAD_FOLDER = 'uploads'
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx'}
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx', 'docx', 'doc'}
+
+    # إعدادات الإشعارات
+    NOTIFICATIONS_ENABLED = True
+    NOTIFICATIONS_CHECK_INTERVAL = 3600  # ساعة واحدة بالثواني
+    NOTIFICATIONS_MAX_COUNT = 50  # الحد الأقصى لعدد الإشعارات المحفوظة
+
+    # إعدادات البحث المتقدم
+    SEARCH_MAX_RESULTS = 200
+    SEARCH_CACHE_TIMEOUT = 300  # 5 دقائق
+
+    # إعدادات التقارير
+    REPORTS_CACHE_TIMEOUT = 600  # 10 دقائق
+    REPORTS_AUTO_REFRESH = True  # تحديث تلقائي للتقارير
+
+    # إعدادات الأمان
+    
 
 class DevelopmentConfig(Config):
     """إعدادات بيئة التطوير"""

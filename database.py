@@ -396,6 +396,101 @@ def create_tables(app):
         if not Supplier.query.first():
             add_sample_data()
 
+class Notification(db.Model):
+    """جدول الإشعارات"""
+    __tablename__ = 'notifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # low_stock, sale, return, etc.
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)
+    read = db.Column(db.Boolean, default=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    user = db.relationship('User', backref='notifications')
+    product = db.relationship('Product', backref='notifications')
+
+    def __repr__(self):
+        return f'<Notification {self.title}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'type': self.type,
+            'title': self.title,
+            'message': self.message,
+            'product_id': self.product_id,
+            'product_name': self.product.name if self.product else None,
+            'read': self.read,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S') if self.timestamp else ''
+        }
+
+class ActivityLog(db.Model):
+    """جدول سجل الأنشطة"""
+    __tablename__ = 'activity_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    action = db.Column(db.String(100), nullable=False)  # create, update, delete
+    entity_type = db.Column(db.String(50), nullable=False)  # product, customer, sale, etc.
+    entity_id = db.Column(db.Integer, nullable=False)
+    description = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    user = db.relationship('User', backref='activity_logs')
+
+    def __repr__(self):
+        return f'<ActivityLog {self.action} {self.entity_type}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else 'Unknown',
+            'action': self.action,
+            'entity_type': self.entity_type,
+            'entity_id': self.entity_id,
+            'description': self.description,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S') if self.timestamp else ''
+        }
+
+class AuditLog(db.Model):
+    """جدول سجل المراجعة"""
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    table_name = db.Column(db.String(50), nullable=False)
+    record_id = db.Column(db.Integer, nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # INSERT, UPDATE, DELETE
+    old_values = db.Column(db.Text)  # JSON string of old values
+    new_values = db.Column(db.Text)  # JSON string of new values
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # العلاقات
+    user = db.relationship('User', backref='audit_logs')
+
+    def __repr__(self):
+        return f'<AuditLog {self.action} {self.table_name}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else 'Unknown',
+            'table_name': self.table_name,
+            'record_id': self.record_id,
+            'action': self.action,
+            'old_values': self.old_values,
+            'new_values': self.new_values,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S') if self.timestamp else ''
+        }
+
 def add_sample_data():
     """إضافة بيانات تجريبية"""
     try:
