@@ -1,11 +1,38 @@
-# -*- coding: utf-8 -*-
-print("app.py is being executed!")
-"""
-تطبيق Flask لإدارة مخزون محل الهواتف
-"""
+from flask import Flask
+from flask_migrate import Migrate
+from database import db
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, make_response, send_file, session
-from database import db, init_database, create_tables, Product, Customer, Supplier, Sale, SaleItem, Category, PurchaseInvoice, PurchaseItem, StoreSettings, Brand, Return, ReturnItem, User, Notification, ActivityLog, AuditLog
+def create_app():
+    """تطبيق Flask لإدارة مخزون محل الهواتف"""
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
+    
+    # التهيئة الأساسية
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///instance/phone_store.db'),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False
+    )
+
+    # تهيئة الإضافات
+    db.init_app(app)
+    migrate = Migrate(app, db)
+    
+    with app.app_context():
+        # استيراد النماذج لتعمل مع Flask-Migrate
+        from database import (User, StoreSettings, Category, Brand, Product, 
+                            Customer, Supplier, Sale, SaleItem, Return, 
+                            ReturnItem, PurchaseInvoice, PurchaseItem, 
+                            Notification, ActivityLog, AuditLog)
+        
+        # إنشاء الجداول إذا لم تكن موجودة (للبيئة التطويرية فقط)
+        if os.environ.get('FLASK_ENV') == 'development':
+            db.create_all()
+
+        # تسجيل البلوبرينتات
+        from views import main_blueprint
+        app.register_blueprint(main_blueprint)
+
+    return app
 from notifications import notification_manager
 from cache import cached, cache_manager
 from datetime import datetime, timedelta
