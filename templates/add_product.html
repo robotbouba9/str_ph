@@ -1,14 +1,117 @@
+```html:/c:/Users/boule/OneDrive/Desktop/str_ph/templates/add_product.html
 {% extends "base.html" %}
 
 {% block content %}
-<h2>إضافة منتج جديد</h2>
-<form method="POST">
-  <label>اسم المنتج:</label>
-  <input type="text" name="name" required><br><br>
-
-  <label>السعر:</label>
-  <input type="number" step="0.01" name="price" required><br><br>
-
-  <button type="submit">حفظ المنتج</button>
-</form>
+<div class="container">
+    <h2 class="my-4">إضافة منتج جديد</h2>
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+            {% for error in form.name.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.brand.label(class="form-label") }}
+            {{ form.brand(class="form-control") }}
+            {% for error in form.brand.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.model.label(class="form-label") }}
+            {{ form.model(class="form-control") }}
+            {% for error in form.model.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.color.label(class="form-label") }}
+            {{ form.color(class="form-control") }}
+            {% for error in form.color.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control") }}
+            {% for error in form.description.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.price_buy.label(class="form-label") }}
+            {{ form.price_buy(class="form-control") }}
+            {% for error in form.price_buy.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.price_sell.label(class="form-label") }}
+            {{ form.price_sell(class="form-control") }}
+            {% for error in form.price_sell.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.quantity.label(class="form-label") }}
+            {{ form.quantity(class="form-control") }}
+            {% for error in form.quantity.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.min_quantity.label(class="form-label") }}
+            {{ form.min_quantity(class="form-control") }}
+            {% for error in form.min_quantity.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.barcode.label(class="form-label") }}
+            {{ form.barcode(class="form-control") }}
+            {% for error in form.barcode.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.imei.label(class="form-label") }}
+            {{ form.imei(class="form-control") }}
+            {% for error in form.imei.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.warranty_period.label(class="form-label") }}
+            {{ form.warranty_period(class="form-control") }}
+            {% for error in form.warranty_period.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.category_id.label(class="form-label") }}
+            {{ form.category_id(class="form-control") }}
+            {% for error in form.category_id.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.supplier_id.label(class="form-label") }}
+            {{ form.supplier_id(class="form-control") }}
+            {% for error in form.supplier_id.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            {{ form.image.label(class="form-label") }}
+            {{ form.image(class="form-control-file") }}
+            {% for error in form.image.errors %}
+            <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">حفظ المنتج</button>
+    </form>
+</div>
 {% endblock %}

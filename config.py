@@ -22,6 +22,7 @@ class Config:
     }
     
     # إعدادات الأمان
+    # يجب تغيير هذا المفتاح السري في بيئة الإنتاج باستخدام متغير بيئة
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'phone-store-secret-key-2024'
     
     # إعدادات الجلسة
@@ -79,7 +80,7 @@ class ProductionConfig(Config):
     SQLALCHEMY_ECHO = False
     
     # إعدادات أمان إضافية للإنتاج
-    SESSION_COOKIE_SECURE = False  # Set to False for HTTP on Render
+    SESSION_COOKIE_SECURE = True  # يجب أن يكون True في بيئة الإنتاج مع HTTPS
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     

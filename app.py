@@ -13,14 +13,28 @@ import os
 from io import BytesIO
 from flask_wtf import CSRFProtect
 from werkzeug.utils import secure_filename
-from forms import LoginForm, UserForm, ProductForm, CustomerForm, SupplierForm, CategoryForm, BrandForm, StoreSettingsForm, ReturnForm
+from forms import LoginForm, UserForm, ProductForm, CustomerForm, SupplierForm, CategoryForm, BrandForm, StoreSettingsForm, ReturnForm, SaleForm
+from flask_cors import CORS
+from groq import Groq
 
 # إعداد التطبيق
 load_dotenv()
 app = Flask(__name__)
 csrf = CSRFProtect(app)
+CORS(app)  # تفعيل CORS للسماح بالاتصال من المتصفح
 # Ensure JSON responses keep Arabic characters (no ASCII escaping)
 app.config['JSON_AS_ASCII'] = False
+
+# إعداد عميل Groq
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_client = None
+if groq_api_key:
+    try:
+        groq_client = Groq(api_key=groq_api_key)
+    except Exception as e:
+        print(f"⚠️ تحذير: لم يتم تهيئة Groq - {e}")
+else:
+    print("⚠️ تحذير: لم يتم العثور على GROQ_API_KEY في ملف .env")
 
 # محاولة استيراد الإعدادات، وإذا فشلت استخدم الإعدادات الافتراضية
 try:
@@ -47,8 +61,7 @@ init_database(app)
 if os.environ.get('APP_ENV') == 'production':
     try:
         with app.app_context():
-            from database import create_tables
-            create_tables(app)
+            # تم التعامل مع إنشاء الجداول بواسطة init_database(app)
             print("✅ تم إنشاء قاعدة البيانات تلقائياً")
     except Exception as e:
         print(f"⚠️ تحذير: لم يتم إنشاء قاعدة البيانات تلقائياً - {e}")
@@ -101,31 +114,39 @@ def currency(value):
 # جلسات للمصادقة
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from flask import session
+from flask import session, g
 
-# مُحدد الدور
+
 def login_required(role=None):
-    def auth_decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            if not session.get('user_id'):
-                flash('الرجاء تسجيل الدخول للمتابعة', 'error')
-                return redirect(url_for('login'))
-            if role:
-                user_role = session.get('user_role')
-                allowed = user_role == 'admin' or user_role == role or (role == 'inventory' and user_role == 'admin')
-                if not allowed:
-                    flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
-                    return redirect(url_for('index'))
-            return fn(*args, **kwargs)
-        return wrapper
-    return auth_decorator
+   def auth_decorator(fn):
+       @wraps(fn)
+       def wrapper(*args, **kwargs):
+           if not session.get('user_id'):
+               flash('الرجاء تسجيل الدخول للمتابعة', 'error')
+               return redirect(url_for('login'))
+           if role:
+               user_role = session.get('user_role')
+               # Define role hierarchy and permissions
+               if user_role == 'owner':
+                   allowed = True
+               elif user_role == 'worker':
+                   allowed = role in ['worker', 'technician'] # Workers can do worker and technician tasks
+               elif user_role == 'technician':
+                   allowed = role == 'technician' # Technicians can only do technician tasks
+               else:
+                   allowed = False # Default to no access
+               if not allowed:
+                   flash('ليس لديك صلاحية للوصول إلى هذه الصفحة', 'error')
+                   return redirect(url_for('index'))
+           return fn(*args, **kwargs)
+       return wrapper
+   return auth_decorator
 
 # إنشاء مستخدم افتراضي إذا لم يوجد
 def ensure_admin_user():
     try:
-        if not User.query.filter_by(username='admin').first():
-            user = User(username='admin', password_hash=generate_password_hash('Admin@123'), role='admin', is_active=True)
+        if not User.query.filter_by(username='owner').first():
+            user = User(username='owner', password_hash=generate_password_hash('Owner@123'), role='owner', is_active=True)
             db.session.add(user)
             db.session.commit()
     except Exception:
@@ -201,16 +222,16 @@ def init_database_route():
 
         # إنشاء مستخدم admin افتراضي
         from werkzeug.security import generate_password_hash
-        if not User.query.filter_by(username='admin').first():
+        if not User.query.filter_by(username='owner').first():
             user = User(
-                username='admin', 
-                password_hash=generate_password_hash('Admin@123'), 
-                role='admin', 
+                username='owner',
+                password_hash=generate_password_hash('Owner@123'), # استخدام كلمة مرور افتراضية قوية
+                role='owner',
                 is_active=True
             )
             db.session.add(user)
             db.session.commit()
-        
+
         # إضافة بيانات تجريبية أساسية
         if not Category.query.first():
             categories = [
@@ -220,7 +241,7 @@ def init_database_route():
             for category in categories:
                 db.session.add(category)
             db.session.commit()
-        
+
         if not Brand.query.first():
             brands = [
                 Brand(name='Samsung'),
@@ -249,15 +270,16 @@ def init_database_route():
         }), 500
 
 @app.route('/reset_database')
+# # # # # # # # # # # # @login_required(role='owner')
 def reset_database_route():
     """حذف وإعادة إنشاء قاعدة البيانات - للاستخدام في حالات الطوارئ"""
     try:
         # حذف جميع الجداول
         db.drop_all()
-        
+
         # إعادة إنشاء الجداول
         db.create_all()
-        
+
         # إنشاء سجل إعدادات افتراضي
         settings = StoreSettings()
         db.session.add(settings)
@@ -266,14 +288,14 @@ def reset_database_route():
         # إنشاء مستخدم admin افتراضي
         from werkzeug.security import generate_password_hash
         user = User(
-            username='admin', 
-            password_hash=generate_password_hash('Admin@123'), 
-            role='admin', 
+            username='owner',
+            password_hash=generate_password_hash('Owner@123'),
+            role='owner',
             is_active=True
         )
         db.session.add(user)
         db.session.commit()
-        
+
         # إضافة بيانات تجريبية أساسية
         categories = [
             Category(name='هواتف ذكية', description='الهواتف المحمولة الذكية'),
@@ -282,7 +304,7 @@ def reset_database_route():
         for category in categories:
             db.session.add(category)
         db.session.commit()
-        
+
         brands = [
             Brand(name='Samsung'),
             Brand(name='iPhone'),
@@ -310,23 +332,34 @@ def reset_database_route():
         }), 500
 
 @app.route('/database_admin')
+# @login_required(role='owner')
 def database_admin():
     """صفحة إدارة قاعدة البيانات"""
     return render_template('database_admin.html')
 
 # حماية عامة: تتطلب تسجيل الدخول لكل الصفحات ما عدا تسجيل الدخول والملفات الثابتة
-@app.before_request
-def _require_login():
-    if request.endpoint in ('login', 'static', 'init_database_route', 'reset_database_route', 'health_check', 'database_admin'):
+# @app.before_request
+# def _require_login():
+    if request.endpoint in ('login', 'static', 'init_database_route', 'reset_database_route', 'health_check', 'database_admin', 'internal_error', 'not_found_error', 'forbidden_error'):
         return
+
+    # التحقق من تسجيل الدخول
     if not session.get('user_id'):
-        # API تفضّل JSON عندما يطلب العميل JSON
         if request.accept_mimetypes and request.accept_mimetypes['application/json'] > request.accept_mimetypes['text/html']:
             return jsonify(success=False, message='Unauthorized'), 401
+        flash('الرجاء تسجيل الدخول للمتابعة', 'error')
         return redirect(url_for('login'))
 
+    # التحقق من الصلاحيات (إذا كان هناك دور محدد مطلوب للمسار)
+    # هذا الجزء يتم التعامل معه بواسطة الديكور @login_required(role='...')
+    # ولكن يمكن إضافة فحص عام هنا إذا لزم الأمر
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    return render_template('403.html'), 403
+
 @app.route('/')
-@login_required()
+# @login_required()
 def index():
     """الصفحة الرئيسية"""
     try:
@@ -334,7 +367,7 @@ def index():
         total_products = Product.query.count()
         total_customers = Customer.query.count()
         total_suppliers = Supplier.query.count()
-        
+
         # المبيعات اليوم (استخدم نطاق زمني لتوافق أفضل بين SQLite/PostgreSQL)
         today = datetime.now().date()
         day_start = datetime.combine(today, datetime.min.time())
@@ -352,20 +385,20 @@ def index():
         today_sales = []
         today_revenue = 0
         flash(f'تحذير: مشكلة في قاعدة البيانات - {str(e)}', 'warning')
-    
+
     try:
         # المنتجات منخفضة المخزون
         low_stock_products = Product.query.filter(
             Product.quantity <= Product.min_quantity
         ).all()
-        
+
         # أحدث المبيعات
         recent_sales = Sale.query.order_by(Sale.created_at.desc()).limit(5).all()
     except Exception as e:
         low_stock_products = []
         recent_sales = []
         flash(f'تحذير: مشكلة في استعلام البيانات - {str(e)}', 'warning')
-    
+
     stats = {
         'total_products': total_products,
         'total_customers': total_customers,
@@ -374,9 +407,9 @@ def index():
         'today_sales_count': len(today_sales),
         'low_stock_count': len(low_stock_products)
     }
-    
-    return render_template('index.html', 
-                         stats=stats, 
+
+    return render_template('index.html',
+                         stats=stats,
                          low_stock_products=low_stock_products,
                          recent_sales=recent_sales)
 
@@ -401,13 +434,13 @@ def inject_current_user():
 # ==================== إدارة المستخدمين ====================
 
 @app.route('/users')
-@login_required('admin')
+@login_required(role='owner')
 def users_list():
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template('users_list.html', users=users)
 
 @app.route('/users/new', methods=['GET', 'POST'])
-@login_required('admin')
+@login_required(role='owner')
 def user_new():
     form = UserForm()
     if form.validate_on_submit():
@@ -434,7 +467,7 @@ def user_new():
     return render_template('user_form.html', form=form, user=None)
 
 @app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@login_required('admin')
+@login_required(role='owner')
 def user_edit(user_id):
     user = User.query.get_or_404(user_id)
     form = UserForm(obj=user)
@@ -450,7 +483,7 @@ def user_edit(user_id):
     return render_template('user_form.html', form=form, user=user)
 
 @app.route('/users/<int:user_id>/toggle', methods=['POST'])
-@login_required('admin')
+@login_required(role='owner')
 def user_toggle(user_id):
     user = User.query.get_or_404(user_id)
     user.is_active = not user.is_active
@@ -461,6 +494,7 @@ def user_toggle(user_id):
 # ==================== إدارة المنتجات ====================
 
 @app.route('/brands')
+@login_required(role='worker')
 def brands():
     """صفحة الماركات"""
     brands = Brand.query.order_by(Brand.name.asc()).all()
@@ -478,17 +512,19 @@ def api_product_by_barcode(barcode):
         return jsonify(success=False, message=str(e)), 400
 
 @app.route('/products')
+@login_required(role='worker')
 def products():
     """صفحة المنتجات"""
-    search = request.args.get('search', '')
-    brand = request.args.get('brand', '')
-    category = request.args.get('category', '')
+    search_query = request.args.get('search', '').strip()
+    brand_filter = request.args.get('brand', '').strip()
+    category_filter = request.args.get('category', '').strip()
     
     query = Product.query
     
-    if search:
-        # بحث محسن يدعم البحث الجزئي والمرن
-        search_terms = search.split()
+    if search_query:
+        # Split the search query into individual terms
+        search_terms = search_query.split()
+        # Apply a filter for each term, searching across multiple fields
         for term in search_terms:
             query = query.filter(
                 db.or_(
@@ -496,15 +532,20 @@ def products():
                     Product.model.ilike(f'%{term}%'),
                     Product.brand.ilike(f'%{term}%'),
                     Product.description.ilike(f'%{term}%'),
-                    Product.barcode.ilike(f'%{term}%')
+                    Product.barcode.ilike(f'%{term}%'),
+                    Product.imei.ilike(f'%{term}%') # Add IMEI to search fields
                 )
             )
     
-    if brand:
-        query = query.filter(Product.brand == brand)
+    if brand_filter:
+        query = query.filter(Product.brand == brand_filter)
     
-    if category:
-        query = query.filter(Product.category_id == category)
+    if category_filter:
+        query = query.filter(Product.category_id == category_filter)
+    
+    
+    
+    
     
     products = query.order_by(Product.created_at.desc()).all()
     # اجلب قائمة الماركات من جدول الماركات
@@ -513,8 +554,32 @@ def products():
     
     return render_template('products.html', products=products, brands=brands, categories=categories)
 
+@app.route('/api/bot_search', methods=['GET'])
+def bot_search():
+    query = request.args.get('query', '').strip()
+    if not query:
+        return jsonify([])
+
+    search_terms = query.split()
+    products_query = Product.query
+
+    for term in search_terms:
+        products_query = products_query.filter(
+            db.or_(
+                Product.name.ilike(f'%{term}%'),
+                Product.model.ilike(f'%{term}%'),
+                Product.brand.ilike(f'%{term}%'),
+                Product.description.ilike(f'%{term}%'),
+                Product.barcode.ilike(f'%{term}%'),
+                Product.imei.ilike(f'%{term}%')
+            )
+        )
+    
+    products = products_query.limit(10).all() # Limit results for bot
+    return jsonify([product.to_dict() for product in products])
+
 @app.route('/products/add', methods=['GET', 'POST'])
-@login_required
+@login_required(role='worker')
 def add_product():
     form = ProductForm()
     if form.validate_on_submit():
@@ -539,12 +604,11 @@ def add_product():
     brands = Brand.query.all()
     suppliers = Supplier.query.all()
     form.category_id.choices = [(c.id, c.name) for c in categories]
-    form.brand_id.choices = [(b.id, b.name) for b in brands]
     form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
     return render_template('add_product.html', form=form, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
-@login_required()
+@login_required(role='worker')
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
@@ -590,11 +654,11 @@ def edit_product(product_id):
     brands = Brand.query.all()
     suppliers = Supplier.query.all()
     form.category_id.choices = [(c.id, c.name) for c in categories]
-    form.brand_id.choices = [(b.id, b.name) for b in brands]
     form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
     return render_template('edit_product.html', form=form, product=product, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/delete/<int:product_id>', methods=['POST'])
+# @login_required(role='worker')
 def delete_product(product_id):
     """حذف منتج"""
     try:
@@ -611,13 +675,14 @@ def delete_product(product_id):
 # ==================== إدارة الفئات ====================
 
 @app.route('/categories')
+# @login_required(role='worker')
 def categories():
     """صفحة الفئات"""
     categories = Category.query.order_by(Category.created_at.desc()).all()
     return render_template('categories.html', categories=categories)
 
 @app.route('/categories/add', methods=['GET', 'POST'])
-@login_required()
+@login_required(role='worker')
 def add_category():
     """إضافة فئة"""
     form = CategoryForm()
@@ -640,7 +705,7 @@ def add_category():
     return render_template('add_category.html', form=form)
 
 @app.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
-@login_required()
+@login_required(role='worker')
 def edit_category(category_id):
     """تعديل فئة"""
     category = Category.query.get_or_404(category_id)
@@ -661,6 +726,7 @@ def edit_category(category_id):
     return render_template('edit_category.html', category=category, form=form)
 
 @app.route('/categories/delete/<int:category_id>', methods=['POST'])
+@login_required(role='worker')
 def delete_category(category_id):
     """حذف فئة"""
     try:
@@ -682,6 +748,7 @@ def delete_category(category_id):
 # ==================== إدارة العملاء ====================
 
 @app.route('/customers')
+# @login_required(role='worker')
 def customers():
     """صفحة العملاء"""
     search = request.args.get('search', '')
@@ -701,7 +768,7 @@ def customers():
     return render_template('customers.html', customers=customers)
 
 @app.route('/customers/add', methods=['GET', 'POST'])
-@login_required()
+@login_required(role='worker')
 def add_customer():
     """إضافة عميل جديد"""
     form = CustomerForm()
@@ -726,7 +793,7 @@ def add_customer():
     return render_template('add_customer.html', form=form)
 
 @app.route('/customers/edit/<int:customer_id>', methods=['GET', 'POST'])
-@login_required()
+@login_required(role='worker')
 def edit_customer(customer_id):
     """تعديل عميل"""
     customer = Customer.query.get_or_404(customer_id)
@@ -746,6 +813,7 @@ def edit_customer(customer_id):
     return render_template('edit_customer.html', customer=customer, form=form)
 
 @app.route('/customers/delete/<int:customer_id>', methods=['POST'])
+# @login_required(role='worker')
 def delete_customer(customer_id):
     """حذف عميل"""
     try:
@@ -762,6 +830,7 @@ def delete_customer(customer_id):
 # ==================== إدارة الموردين ====================
 
 @app.route('/suppliers')
+# @login_required(role='worker')
 def suppliers():
     """صفحة الموردين"""
     search = request.args.get('search', '')
@@ -781,7 +850,7 @@ def suppliers():
     return render_template('suppliers.html', suppliers=suppliers)
 
 @app.route('/suppliers/add', methods=['GET', 'POST'])
-@login_required()
+# @login_required(role='worker')
 def add_supplier():
     """إضافة مورد جديد"""
     form = SupplierForm()
@@ -807,7 +876,7 @@ def add_supplier():
     return render_template('add_supplier.html', form=form)
 
 @app.route('/brands/add', methods=['GET', 'POST'])
-@login_required()
+# @login_required(role='worker')
 def add_brand():
     """إضافة ماركة جديدة"""
     form = BrandForm()
@@ -834,6 +903,7 @@ def add_brand():
     return render_template('add_brand.html', form=form)
 
 @app.route('/brands/delete/<int:brand_id>', methods=['POST'])
+# @login_required(role='worker')
 def delete_brand(brand_id):
     """حذف ماركة"""
     try:
@@ -847,7 +917,7 @@ def delete_brand(brand_id):
     return redirect(url_for('brands'))
 
 @app.route('/suppliers/edit/<int:supplier_id>', methods=['GET', 'POST'])
-@login_required()
+# @login_required(role='worker')
 def edit_supplier(supplier_id):
     """تعديل مورد"""
     supplier = Supplier.query.get_or_404(supplier_id)
@@ -868,6 +938,7 @@ def edit_supplier(supplier_id):
     return render_template('edit_supplier.html', supplier=supplier, form=form)
 
 @app.route('/suppliers/delete/<int:supplier_id>', methods=['POST'])
+# @login_required(role='worker')
 def delete_supplier(supplier_id):
     """حذف مورد"""
     try:
@@ -884,6 +955,7 @@ def delete_supplier(supplier_id):
 # ==================== إدارة المبيعات ====================
 
 @app.route('/sales')
+# @login_required(role='worker')
 def sales():
     """صفحة المبيعات"""
     page = request.args.get('page', 1, type=int)
@@ -896,7 +968,7 @@ def sales():
     return render_template('sales.html', sales=sales)
 
 @app.route('/sales/new', methods=['GET', 'POST'])
-@login_required()
+# @login_required(role='worker')
 def new_sale():
     """إنشاء فاتورة بيع جديدة"""
     form = SaleForm()
@@ -959,12 +1031,14 @@ def new_sale():
     return render_template('new_sale.html', form=form, customers=customers, products=products)
 
 @app.route('/sales/<int:sale_id>')
+# @login_required(role='worker')
 def view_sale(sale_id):
     """عرض تفاصيل الفاتورة"""
     sale = Sale.query.get_or_404(sale_id)
     return render_template('view_sale.html', sale=sale)
 
 @app.route('/sales/delete/<int:sale_id>', methods=['POST'])
+@login_required(role='worker')
 def delete_sale(sale_id):
     sale = Sale.query.get_or_404(sale_id)
     try:
@@ -978,16 +1052,18 @@ def delete_sale(sale_id):
 
 # Returns Management Routes
 @app.route('/returns')
+# @login_required(role='worker')
 def returns():
+    form = ReturnForm()
     all_returns = Return.query.all()
     customers = Customer.query.all()
     products = Product.query.all()
     # Prefill sale_id if coming from a sale view
     sale_id_prefill = request.args.get('sale_id', '')
-    return render_template('returns.html', returns=all_returns, customers=customers, products=products, sale_id_prefill=sale_id_prefill)
+    return render_template('returns.html', returns=all_returns, customers=customers, products=products, sale_id_prefill=sale_id_prefill, form=form)
 
 @app.route('/returns/add', methods=['POST'])
-@login_required()
+@login_required(role='worker')
 def add_return():
     form = ReturnForm()
     if form.validate_on_submit():
@@ -1113,6 +1189,7 @@ def add_return():
             return redirect(url_for('returns'))
 
 @app.route('/returns/<int:return_id>')
+@login_required(role='worker')
 def view_return(return_id):
     try:
         return_obj = Return.query.get_or_404(return_id)
@@ -1140,6 +1217,7 @@ def view_return(return_id):
 
 # API: عناصر الفاتورة القابلة للإرجاع للتعبئة التلقائية
 @app.route('/api/sales/<int:sale_id>/returnable-items')
+# @login_required(role='worker')
 def api_sale_returnable_items(sale_id):
     try:
         sale = Sale.query.get_or_404(sale_id)
@@ -1178,6 +1256,7 @@ def api_sale_returnable_items(sale_id):
         return jsonify(success=False, message=str(e)), 400
 
 @app.route('/returns/delete/<int:return_id>', methods=['POST'])
+# @login_required(role='worker')
 def delete_return(return_id):
     return_obj = Return.query.get_or_404(return_id)
     try:
@@ -1196,6 +1275,7 @@ def delete_return(return_id):
 # ==================== التقارير ====================
 
 @app.route('/reports')
+# @login_required(role='worker')
 def reports():
     """صفحة التقارير"""
     # تقرير المبيعات الشهرية
@@ -1232,6 +1312,7 @@ def reports():
 # ==================== API للتكامل مع n8n/Google Sheets ====================
 
 @app.route('/api/reports/sales.json')
+# @login_required(role='worker')
 def api_reports_sales_json():
     """تقرير المبيعات كـ JSON للتكامل الخارجي (n8n/Google Sheets)"""
     start_date = request.args.get('start_date')
@@ -1251,6 +1332,7 @@ def api_reports_sales_json():
 # ==================== API للبحث ====================
 
 @app.route('/api/products/search')
+# @login_required(role='worker')
 def api_search_products():
     """البحث عن المنتجات عبر API - محسن"""
     query = request.args.get('q', '')
@@ -1278,6 +1360,7 @@ def api_search_products():
     return jsonify([product.to_dict() for product in products])
 
 @app.route('/api/customers/search')
+# @login_required(role='worker')
 def api_search_customers():
     """البحث عن العملاء عبر API"""
     query = request.args.get('q', '')
@@ -1297,6 +1380,7 @@ def api_search_customers():
 # ==================== فواتير الموردين ====================
 
 @app.route('/purchases')
+# @login_required(role='worker')
 def purchases():
     """صفحة فواتير الشراء"""
     page = request.args.get('page', 1, type=int)
@@ -1309,6 +1393,7 @@ def purchases():
     return render_template('purchases.html', purchases=purchases)
 
 @app.route('/purchases/new', methods=['GET', 'POST'])
+# @login_required(role='worker')
 def new_purchase():
     """إنشاء فاتورة شراء جديدة"""
     if request.method == 'POST':
@@ -1371,6 +1456,7 @@ def new_purchase():
     return render_template('new_purchase.html', suppliers=suppliers, products=products)
 
 @app.route('/purchases/<int:purchase_id>')
+# @login_required(role='worker')
 def view_purchase(purchase_id):
     """عرض تفاصيل فاتورة الشراء"""
     purchase = PurchaseInvoice.query.get_or_404(purchase_id)
@@ -1379,6 +1465,7 @@ def view_purchase(purchase_id):
 # ==================== تصدير الفواتير (PDF عادي) ====================
 
 @app.route('/sales/<int:sale_id>/regular-pdf')
+# @login_required(role='worker')
 def sale_regular_pdf(sale_id):
     """تصدير فاتورة البيع كـ PDF عادي (A4)"""
     sale = Sale.query.get_or_404(sale_id)
@@ -1475,6 +1562,7 @@ def sale_regular_pdf(sale_id):
     return response
 
 @app.route('/purchases/<int:purchase_id>/regular-pdf')
+@login_required(role='worker')
 def purchase_regular_pdf(purchase_id):
     """تصدير فاتورة الشراء كـ PDF عادي (A4)"""
     purchase = PurchaseInvoice.query.get_or_404(purchase_id)
@@ -1574,6 +1662,7 @@ def purchase_regular_pdf(purchase_id):
 # ==================== الفواتير الحرارية ====================
 
 @app.route('/sales/<int:sale_id>/thermal-pdf')
+# @login_required(role='worker')
 def sale_thermal_pdf(sale_id):
     """تصدير فاتورة البيع كـ PDF حراري (80mm)"""
     sale = Sale.query.get_or_404(sale_id)
@@ -1590,6 +1679,7 @@ def sale_thermal_pdf(sale_id):
     return response
 
 @app.route('/purchases/<int:purchase_id>/thermal-pdf')
+# @login_required(role='worker')
 def purchase_thermal_pdf(purchase_id):
     """تصدير فاتورة الشراء كـ PDF حراري (80mm)"""
     purchase = PurchaseInvoice.query.get_or_404(purchase_id)
@@ -1608,6 +1698,7 @@ def purchase_thermal_pdf(purchase_id):
 # ==================== تصدير Excel ====================
 
 @app.route('/reports/sales/excel')
+# @login_required(role='worker')
 def export_sales_excel():
     """تصدير تقرير المبيعات إلى Excel"""
     start_date = request.args.get('start_date')
@@ -1637,6 +1728,7 @@ def export_sales_excel():
     return response
 
 @app.route('/reports/products/excel')
+# @login_required(role='worker')
 def export_products_excel():
     """تصدير تقرير المنتجات إلى Excel"""
     products = Product.query.order_by(Product.name).all()
@@ -1653,6 +1745,7 @@ def export_products_excel():
     return response
 
 @app.route('/reports/purchases/excel')
+# @login_required(role='worker')
 def export_purchases_excel():
     """تصدير تقرير المشتريات إلى Excel"""
     start_date = request.args.get('start_date')
@@ -1684,6 +1777,7 @@ def export_purchases_excel():
 # ==================== تحسين التقارير ====================
 
 @app.route('/reports/advanced')
+# @login_required(role='worker')
 def advanced_reports():
     """صفحة التقارير المتقدمة"""
     # تقرير المبيعات حسب الفترة
@@ -1740,6 +1834,7 @@ def advanced_reports():
 # ==================== صفحة إعدادات المتجر ====================
 
 @app.route('/settings', methods=['GET', 'POST'])
+# @login_required(role='owner')
 def settings_page():
     settings = StoreSettings.query.first()
     if request.method == 'POST':
@@ -1818,6 +1913,52 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ==================== مسارات Groq AI Agent ====================
+@app.route("/ask", methods=["POST"])
+@csrf.exempt  # استثناء من CSRF protection للـ API
+def ask():
+    """مسار للتفاعل مع Groq AI Agent"""
+    try:
+        if not groq_client:
+            return jsonify({"reply": "❌ خدمة الذكاء الاصطناعي غير متاحة حالياً"}), 500
+        
+        data = request.json
+        if not data or not data.get("message"):
+            return jsonify({"reply": "❌ الرجاء إرسال رسالة"}), 400
+        
+        user_message = data.get("message", "").strip()
+        if not user_message:
+            return jsonify({"reply": "❌ الرجاء إرسال رسالة غير فارغة"}), 400
+
+        # إرسال الرسالة إلى Groq
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "أنت مساعد ذكي لمحل الهواتف المحمولة. تجيب باللغة العربية وتساعد في الاستفسارات المتعلقة بالهواتف والاكسسوارات."
+                },
+                {
+                    "role": "user", 
+                    "content": user_message
+                }
+            ],
+            max_tokens=1000,
+            temperature=0.7
+        )
+
+        ai_reply = response.choices[0].message.content
+        return jsonify({"reply": ai_reply})
+
+    except Exception as e:
+        print(f"خطأ في Groq API: {str(e)}")
+        return jsonify({"reply": f"❌ حدث خطأ في الخدمة: {str(e)}"}), 500
+
+@app.route("/chat")
+def chat_page():
+    """صفحة الدردشة مع AI Agent"""
+    return app.send_static_file("index.html")
 
 if __name__ == '__main__':
     # إنشاء الجداول والبيانات الافتراضية

@@ -65,6 +65,15 @@ class StoreSettingsForm(FlaskForm):
     currency_symbol = StringField('رمز العملة', validators=[DataRequired()])
     submit = SubmitField('حفظ الإعدادات')
 
+class SaleForm(FlaskForm):
+    customer_id = SelectField('العميل', coerce=int, validators=[Optional()])
+    total_amount = DecimalField('المبلغ الإجمالي', validators=[DataRequired(), NumberRange(min=0)])
+    discount = DecimalField('الخصم', default=0, validators=[Optional(), NumberRange(min=0)])
+    payment_method = SelectField('طريقة الدفع', choices=[('Cash', 'نقداً'), ('Card', 'بطاقة'), ('Transfer', 'تحويل')], validators=[DataRequired()])
+    notes = TextAreaField('ملاحظات', validators=[Optional()])
+    final_amount = DecimalField('المبلغ النهائي', validators=[DataRequired(), NumberRange(min=0)])
+    submit = SubmitField('إتمام البيع')
+
 class ReturnForm(FlaskForm):
     sale_id = StringField('رقم الفاتورة الأصلية', validators=[DataRequired()])
     customer_id = SelectField('العميل', coerce=int, validators=[Optional()])

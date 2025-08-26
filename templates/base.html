@@ -165,6 +165,86 @@
                 padding: 10px;
             }
         }
+
+        /* In-App Bot Styles */
+        .in-app-bot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 450px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .in-app-bot-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .in-app-bot-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .chat-message {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            max-width: 80%;
+        }
+
+        .chat-message.user {
+            background-color: #e0f7fa;
+            margin-left: auto;
+        }
+
+        .chat-message.bot {
+            background-color: #e8f5e9;
+            margin-right: auto;
+        }
+
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-left: 10px;
+        }
+
+        .chat-input button {
+            border-radius: 8px;
+            padding: 8px 15px;
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -327,6 +407,22 @@
 
                     <!-- Page Content -->
                     {% block content %}{% endblock %}
+
+                    <!-- In-App Bot Interface -->
+                    <div id="inAppBot" class="in-app-bot-container">
+                        <div class="in-app-bot-header">
+                            <i class="fas fa-robot me-2"></i> مساعد المتجر
+                            <button id="closeBot" class="btn-close" aria-label="Close"></button>
+                        </div>
+                        <div class="in-app-bot-body">
+                            <div id="chatMessages" class="chat-messages"></div>
+                            <div class="chat-input">
+                                <input type="text" id="botInput" placeholder="اكتب سؤالك هنا...">
+                                <button id="sendBotMessage" class="btn btn-primary btn-sm">إرسال</button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -378,6 +474,92 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const inAppBot = document.getElementById('inAppBot');
+            const closeBotBtn = document.getElementById('closeBot');
+            const botInput = document.getElementById('botInput');
+            const sendBotMessageBtn = document.getElementById('sendBotMessage');
+            const chatMessages = document.getElementById('chatMessages');
+
+            // Initially hide the bot
+            inAppBot.style.display = 'none';
+
+            // Toggle bot visibility (you'll need a button to open it)
+            // For now, let's add a simple way to show it for testing
+            // You might want to add a floating action button or a menu item
+            function toggleBot() {
+                if (inAppBot.style.display === 'none') {
+                    inAppBot.style.display = 'flex';
+                } else {
+                    inAppBot.style.display = 'none';
+                }
+            }
+
+            // Close bot button
+            closeBotBtn.addEventListener('click', function() {
+                inAppBot.style.display = 'none';
+            });
+
+            // Send message function
+            function sendMessage() {
+                const message = botInput.value.trim();
+                if (message) {
+                    appendMessage(message, 'user');
+                    botInput.value = '';
+                    // Send message to backend for processing
+                    fetch(`/api/bot_search?query=${encodeURIComponent(message)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.length > 0) {
+                                let botResponse = 'Here are some products I found:\n';
+                                data.forEach(product => {
+                                    botResponse += `- ${product.name} (${product.brand} ${product.model}) - Price: $${product.price_sell}\n`;
+                                });
+                                appendMessage(botResponse, 'bot');
+                            } else {
+                                appendMessage('Sorry, I could not find any products matching your query.', 'bot');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            appendMessage('An error occurred while searching for products.', 'bot');
+                        });
+                }
+            }
+
+            // Append message to chat window
+            function appendMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('chat-message', sender);
+                messageDiv.textContent = text;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+            }
+
+            // Event listeners for sending messages
+            sendBotMessageBtn.addEventListener('click', sendMessage);
+            botInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Temporary: Add a button to open the bot for testing purposes
+            // You can remove this later and integrate it into your UI properly
+            const openBotButton = document.createElement('button');
+            openBotButton.textContent = 'افتح المساعد';
+            openBotButton.style.position = 'fixed';
+            openBotButton.style.bottom = '20px';
+            openBotButton.style.left = '20px';
+            openBotButton.style.zIndex = '1001';
+            openBotButton.classList.add('btn', 'btn-info');
+            openBotButton.addEventListener('click', toggleBot);
+            document.body.appendChild(openBotButton);
+
+        });
+    </script>
 </body>
 
 </html>

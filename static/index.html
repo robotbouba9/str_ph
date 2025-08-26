@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ar">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>AI Agent</title>
+    <style>
+        body {
+            background: #121212;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #4CAF50;
+        }
+
+        #chat {
+            width: 80%;
+            max-width: 600px;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .user {
+            color: #4FC3F7;
+            margin: 5px 0;
+        }
+
+        .bot {
+            color: #81C784;
+            margin: 5px 0;
+        }
+
+        input {
+            width: 70%;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            margin-right: 10px;
+            background: #333;
+            color: #eee;
+        }
+
+        .tab-btn.active {
+            background: #4CAF50;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .analyze-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        #analysis-type {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #1e1e1e;
+            color: #eee;
+        }
+
+        #file-input {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #1e1e1e;
+            color: #eee;
+        }
+
+        #code-input {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #1e1e1e;
+            color: #eee;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+
+        #analysis-result {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: Arial, sans-serif;
+        }
+
+        .analysis {
+            color: #FFD700;
+            margin: 5px 0;
+        }
+
+        /* إدارة الملفات */
+        .files-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        #current-path {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .files-container {
+            display: flex;
+            gap: 10px;
+            height: 500px;
+        }
+
+        .files-list {
+            width: 300px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            padding: 8px;
+            margin: 2px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-item:hover {
+            background: #333;
+        }
+
+        .file-item.selected {
+            background: #4CAF50;
+        }
+
+        .file-editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px 5px 0 0;
+        }
+
+        #editor-file-name {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        #file-content {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #333;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            background: #1e1e1e;
+            color: #eee;
+            font-family: 'Courier New', monospace;
+            resize: none;
+        }
+
+        /* Terminal */
+        .terminal-output {
+            height: 400px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+            margin-bottom: 10px;
+        }
+
+        .terminal-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #4CAF50;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        #terminal-command {
+            flex: 1;
+            background: #000;
+            color: #0f0;
+            border: 1px solid #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .terminal-line {
+            margin: 2px 0;
+        }
+
+        .terminal-command {
+            color: #4CAF50;
+        }
+
+        .terminal-output-text {
+            color: #eee;
+        }
+
+        .terminal-error {
+            color: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🤖 مساعد البرمجة الذكي</h1>
+    <div class="controls">
+        <button onclick="showTab('chat')" class="tab-btn active" id="chat-tab">💬 دردشة</button>
+        <button onclick="showTab('analyze')" class="tab-btn" id="analyze-tab">🔍 تحليل الكود</button>
+        <button onclick="showTab('files')" class="tab-btn" id="files-tab">📁 إدارة الملفات</button>
+        <button onclick="showTab('terminal')" class="tab-btn" id="terminal-tab">💻 Terminal</button>
+    </div>
+
+    <!-- تبويب الدردشة -->
+    <div id="chat-section" class="section active">
+        <div id="chat"></div>
+        <div class="input-group">
+            <input id="message" placeholder="اسأل عن أي شيء متعلق بالمشروع..." />
+            <button onclick="sendMessage()">إرسال</button>
+        </div>
+    </div>
+
+    <!-- تبويب تحليل الكود -->
+    <div id="analyze-section" class="section">
+        <div class="analyze-controls">
+            <select id="analysis-type">
+                <option value="general">تحليل عام</option>
+                <option value="security">مراجعة أمنية</option>
+                <option value="performance">تحليل الأداء</option>
+                <option value="structure">مراجعة البنية</option>
+            </select>
+            <input type="file" id="file-input" accept=".py,.js,.html,.css" />
+            <button onclick="analyzeCode()">تحليل</button>
+        </div>
+        <textarea id="code-input" placeholder="أو الصق الكود هنا للتحليل..."></textarea>
+        <div id="analysis-result"></div>
+    </div>
+
+    <!-- تبويب إدارة الملفات -->
+    <div id="files-section" class="section">
+        <div class="files-controls">
+            <button onclick="loadFiles()">🔄 تحديث</button>
+            <button onclick="createNewFile()">📄 ملف جديد</button>
+            <span id="current-path">📂 /</span>
+        </div>
+        <div class="files-container">
+            <div id="files-list" class="files-list"></div>
+            <div id="file-editor" class="file-editor">
+                <div class="editor-header">
+                    <span id="editor-file-name">اختر ملف للتعديل</span>
+                    <button onclick="saveCurrentFile()" id="save-btn" disabled>💾 حفظ</button>
+                </div>
+                <textarea id="file-content" placeholder="محتوى الملف سيظهر هنا..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- تبويب Terminal -->
+    <div id="terminal-section" class="section">
+        <div id="terminal-output" class="terminal-output"></div>
+        <div class="terminal-input">
+            <span class="prompt">$</span>
+            <input id="terminal-command" placeholder="اكتب الأمر هنا..." />
+            <button onclick="executeCommand()">تنفيذ</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const msgBox = document.getElementById("message");
+            const chatBox = document.getElementById("chat");
+            const userMessage = msgBox.value.trim();
+            if (!userMessage) return;
+
+            // أضف رسالة المستخدم
+            chatBox.innerHTML += `<div class="user">👤: ${userMessage}</div>`;
+            msgBox.value = "";
+
+            try {
+                const res = await fetch("http://localhost:8000/ask", {   // ⬅️ الاتصال بخادم Groq المنفصل
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userMessage })
+                });
+
+                const data = await res.json();
+                chatBox.innerHTML += `<div class="bot">🤖: ${data.reply}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+            } catch (err) {
+                chatBox.innerHTML += `<div class="bot">❌ خطأ في الاتصال بالخادم</div>`;
+            }
+        }
+
+        function showTab(tabName) {
+            // إخفاء جميع التبويبات
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // إظهار التبويب المحدد
+            document.getElementById(tabName + '-section').classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        async function analyzeCode() {
+            const analysisType = document.getElementById('analysis-type').value;
+            const codeInput = document.getElementById('code-input').value;
+            const fileInput = document.getElementById('file-input').files[0];
+            const resultDiv = document.getElementById('analysis-result');
+
+            let codeContent = codeInput;
+
+            // قراءة الملف إذا تم اختياره
+            if (fileInput && !codeContent) {
+                try {
+                    codeContent = await readFile(fileInput);
+                } catch (err) {
+                    resultDiv.innerHTML = `<div class="analysis">❌ خطأ في قراءة الملف: ${err.message}</div>`;
+                    return;
+                }
+            }
+
+            if (!codeContent) {
+                resultDiv.innerHTML = `<div class="analysis">❌ الرجاء إدخال كود أو اختيار ملف للتحليل</div>`;
+                return;
+            }
+
+            resultDiv.innerHTML = `<div class="analysis">🔄 جاري تحليل الكود...</div>`;
+
+            try {
+                const response = await fetch("http://localhost:8000/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        code: codeContent,
+                        type: analysisType,
+                        file_path: fileInput ? fileInput.name : ""
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="analysis">📊 نتيجة التحليل (${getAnalysisTypeName(analysisType)}):</div>
+                                         <div style="color: #eee; margin-top: 10px;">${data.analysis}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="analysis">❌ ${data.reply || 'خطأ في التحليل'}</div>`;
+                }
+
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="analysis">❌ خطأ في الاتصال بالخادم</div>`;
+            }
+        }
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(new Error('فشل في قراءة الملف'));
+                reader.readAsText(file);
+            });
+        }
+
+        function getAnalysisTypeName(type) {
+            const names = {
+                'general': 'تحليل عام',
+                'security': 'مراجعة أمنية',
+                'performance': 'تحليل الأداء',
+                'structure': 'مراجعة البنية'
+            };
+            return names[type] || 'تحليل عام';
+        }
+
+        // متغيرات عامة
+        let currentDirectory = "";
+        let currentFile = "";
+        let files = [];
+
+        // إدارة الملفات
+        async function loadFiles(directory = "") {
+            try {
+                const response = await fetch(`http://localhost:8000/files?dir=${directory}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    files = data.files;
+                    currentDirectory = data.directory;
+                    displayFiles();
+                    document.getElementById('current-path').textContent = `📂 /${currentDirectory}`;
+                } else {
+                    alert(`خطأ: ${data.error}`);
+                }
+            } catch (err) {
+                alert('خطأ في تحميل الملفات');
+            }
+        }
+
+        function displayFiles() {
+            const filesList = document.getElementById('files-list');
+            filesList.innerHTML = '';
+
+            // إضافة زر العودة للمجلد الأب
+            if (currentDirectory) {
+                const backItem = document.createElement('div');
+                backItem.className = 'file-item';
+                backItem.innerHTML = '📁 ..';
+                backItem.onclick = () => {
+                    const parentDir = currentDirectory.split('/').slice(0, -1).join('/');
+                    loadFiles(parentDir);
+                };
+                filesList.appendChild(backItem);
+            }
+
+            // عرض الملفات والمجلدات
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `${file.type === 'directory' ? '📁' : '📄'} ${file.name}`;
+
+                fileItem.onclick = () => {
+                    if (file.type === 'directory') {
+                        loadFiles(file.path);
+                    } else {
+                        selectFile(file);
+                    }
+                };
+
+                filesList.appendChild(fileItem);
+            });
+        }
+
+        async function selectFile(file) {
+            // إزالة التحديد السابق
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // تحديد الملف الحالي
+            event.target.classList.add('selected');
+            currentFile = file.path;
+
+            // تحميل محتوى الملف
+            try {
+                const response = await fetch(`http://localhost:8000/file?path=${file.path}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('file-content').value = data.content;
+                    document.getElementById('editor-file-name').textContent = file.name;
+                    document.getElementById('save-btn').disabled = false;
+                } else {
+                    alert(`خطأ: ${data.error}`);
+                }
+            } catch (err) {
+                alert('خطأ في تحميل الملف');
+            }
+        }
+
+        async function saveCurrentFile() {
+            if (!currentFile) {
+                alert('لا يوجد ملف محدد');
+                return;
+            }
+
+            const content = document.getElementById('file-content').value;
+
+            try {
+                const response = await fetch('http://localhost:8000/file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path: currentFile,
+                        content: content
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`✅ ${data.message}`);
+                } else {
+                    alert(`❌ ${data.error}`);
+                }
+            } catch (err) {
+                alert('خطأ في حفظ الملف');
+            }
+        }
+
+        function createNewFile() {
+            const fileName = prompt('اسم الملف الجديد:');
+            if (!fileName) return;
+
+            const filePath = currentDirectory ? `${currentDirectory}/${fileName}` : fileName;
+            currentFile = filePath;
+
+            document.getElementById('file-content').value = '';
+            document.getElementById('editor-file-name').textContent = fileName;
+            document.getElementById('save-btn').disabled = false;
+        }
+
+        // Terminal
+        async function executeCommand() {
+            const commandInput = document.getElementById('terminal-command');
+            const command = commandInput.value.trim();
+
+            if (!command) return;
+
+            const terminalOutput = document.getElementById('terminal-output');
+
+            // إضافة الأمر إلى المخرجات
+            terminalOutput.innerHTML += `<div class="terminal-line terminal-command">$ ${command}</div>`;
+            commandInput.value = '';
+
+            try {
+                const response = await fetch('http://localhost:8000/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: command })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.output) {
+                        terminalOutput.innerHTML += `<div class="terminal-line terminal-output-text">${data.output}</div>`;
+                    }
+                } else {
+                    terminalOutput.innerHTML += `<div class="terminal-line terminal-error">❌ ${data.error}</div>`;
+                }
+
+                // التمرير إلى الأسفل
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+            } catch (err) {
+                terminalOutput.innerHTML += `<div class="terminal-line terminal-error">❌ خطأ في الاتصال</div>`;
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
+        }
+
+        // مستمعات الأحداث
+        document.getElementById('message').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('terminal-command').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                executeCommand();
+            }
+        });
+
+        // تحميل الملفات عند فتح التبويب
+        document.getElementById('files-tab').addEventListener('click', function () {
+            if (files.length === 0) {
+                loadFiles();
+            }
+        });
+    </script>
+</body>
+
+</html>
