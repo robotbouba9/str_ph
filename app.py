@@ -1,6 +1,17 @@
-from flask import Flask
+from flask import (
+    Flask, render_template, request, jsonify, redirect, 
+    url_for, flash, make_response, session, json
+)
 from flask_migrate import Migrate
-from database import db
+from flask_wtf import CSRFProtect
+from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
+from database import (
+    db, init_database, User, Product, Sale, Category, Brand, 
+    Supplier, Customer, StoreSettings, Notification, 
+    ActivityLog, AuditLog, Return, ReturnItem, PurchaseInvoice,
+    PurchaseItem, SaleItem
+)
 
 def create_app():
     """تطبيق Flask لإدارة مخزون محل الهواتف"""
@@ -33,11 +44,14 @@ def create_app():
         app.register_blueprint(main_blueprint)
 
     return app
-from notifications import notification_manager
-from cache import cached, cache_manager
-from datetime import datetime, timedelta
+from cache import cached
+from datetime import datetime, timedelta, time
 from excel_export import ExcelExporter
 from thermal_invoice import ThermalInvoiceGenerator
+from forms import (
+    UserForm, ProductForm, CustomerForm, SupplierForm,
+    CategoryForm, BrandForm, StoreSettingsForm, ReturnForm, SaleForm
+)
 from dotenv import load_dotenv
 import os
 from io import BytesIO
