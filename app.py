@@ -2,8 +2,14 @@ from flask import (
     Flask, render_template, request, jsonify, redirect, 
     url_for, flash, make_response, session, json
 )
-from flask_migrate import Migrate
 import os
+
+# استيراد Flask-Migrate فقط إذا كان متوفراً
+try:
+    from flask_migrate import Migrate
+    MIGRATE_AVAILABLE = True
+except ImportError:
+    MIGRATE_AVAILABLE = False
 from flask_wtf import CSRFProtect
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -32,7 +38,10 @@ def create_app():
 
     # تهيئة الإضافات
     db.init_app(app)
-    migrate = Migrate(app, db)
+    
+    # تهيئة Flask-Migrate فقط إذا كان متوفراً
+    if MIGRATE_AVAILABLE:
+        migrate = Migrate(app, db)
     
     with app.app_context():
         # استيراد النماذج لتعمل مع Flask-Migrate
