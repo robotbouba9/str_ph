@@ -33,11 +33,12 @@ DEBUG=true
             f.write(env_content)
         print("✅ تم إنشاء ملف .env")
 
-def main():
-    """الدالة الرئيسية"""
-    print("🚀 تشغيل سريع لبرنامج إدارة مخزون الهواتف")
-    print("=" * 50)
-    
+    check_python_version()
+    check_virtual_env()
+    if install_requirements():
+        setup_env()
+    if '--auto-commits' in sys.argv:
+        print("✅ Auto-commits activés")
     # إنشاء المجلدات
     create_directories()
     print("✅ تم إنشاء المجلدات المطلوبة")
