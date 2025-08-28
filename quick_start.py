@@ -60,7 +60,10 @@ def main():
         print(f"❌ خطأ في تشغيل التطبيق: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
+    check_python_version()
+    check_virtual_env()
+    if install_requirements():
+        setup_env()
     if '--auto-commits' in sys.argv:
         print("✅ Auto-commits activés")
         # Ajouter le code pour les auto-commits ici
