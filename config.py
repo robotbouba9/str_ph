@@ -14,7 +14,7 @@ class Config:
     if _db_url and _db_url.startswith('postgres://'):
         # توافق Render/Heroku مع SQLAlchemy
         _db_url = _db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
-    SQLALCHEMY_DATABASE_URI = _db_url or f'sqlite:///{os.path.abspath("instance/phone_store.db")}'
+    SQLALCHEMY_DATABASE_URI = _db_url or f'sqlite:///{os.path.join(os.getcwd(), "instance", "phone_store.db")}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,

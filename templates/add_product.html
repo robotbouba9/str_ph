@@ -87,7 +87,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             {{ form.price_buy.label(class="form-label") }}
-                            {{ form.price_buy(class="form-control", placeholder="سعر الشراء") }}
+                            {{ form.price_buy(class="form-control", placeholder="سعر الشراء", type="text", pattern="[0-9]*[.,]?[0-9]+") }}
                             {% if form.price_buy.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.price_buy.errors %}
@@ -98,7 +98,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             {{ form.price_sell.label(class="form-label") }}
-                            {{ form.price_sell(class="form-control", placeholder="سعر البيع") }}
+                            {{ form.price_sell(class="form-control", placeholder="سعر البيع", type="text", pattern="[0-9]*[.,]?[0-9]+") }}
                             {% if form.price_sell.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.price_sell.errors %}

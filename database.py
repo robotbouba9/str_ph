@@ -37,6 +37,7 @@ class StoreSettings(db.Model):
     currency_name = db.Column(db.String(50), default='دينار جزائري')
     currency_symbol = db.Column(db.String(10), default='د.ج')
     logo_path = db.Column(db.String(300))
+    notification_user_id = db.Column(db.Integer, default=1) # User ID for general notifications
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
@@ -49,6 +50,7 @@ class StoreSettings(db.Model):
             'currency_name': self.currency_name,
             'currency_symbol': self.currency_symbol,
             'logo_path': self.logo_path,
+            'notification_user_id': self.notification_user_id,
         }
 
 class Category(db.Model):
@@ -99,7 +101,7 @@ class Product(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)  # اسم المنتج
-    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'))  # الماركة
+    brand = db.Column(db.String(100))  # الماركة
     model = db.Column(db.String(100), nullable=False)  # الموديل
     color = db.Column(db.String(50))  # اللون
     description = db.Column(db.Text)  # وصف المنتج ومواصفاته
@@ -116,6 +118,7 @@ class Product(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # العلاقات
+
     supplier = db.relationship('Supplier', backref='products')
     sale_items = db.relationship('SaleItem', backref='product')
     

@@ -18,7 +18,7 @@ class UserForm(FlaskForm):
 
 class ProductForm(FlaskForm):
     name = StringField('اسم المنتج', validators=[DataRequired()])
-    brand_id = SelectField('الماركة', coerce=int, validators=[DataRequired()])
+    brand = StringField('الماركة', validators=[DataRequired()])
     model = StringField('الموديل', validators=[DataRequired()])
     color = StringField('اللون', validators=[Optional()])
     description = TextAreaField('الوصف', validators=[Optional()])
@@ -50,6 +50,7 @@ class SupplierForm(FlaskForm):
 
 class CategoryForm(FlaskForm):
     name = StringField('اسم الفئة', validators=[DataRequired()])
+    description = TextAreaField('الوصف', validators=[Optional()])
     submit = SubmitField('حفظ الفئة')
 
 class BrandForm(FlaskForm):

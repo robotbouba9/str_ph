@@ -3,6 +3,7 @@ from flask import (
     url_for, flash, make_response, session, json
 )
 from flask_migrate import Migrate
+import os
 from flask_wtf import CSRFProtect
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -20,9 +21,14 @@ def create_app():
     # التهيئة الأساسية
     app.config.from_mapping(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
-        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///instance/phone_store.db'),
+        SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(app.instance_path, 'phone_store.db'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False
     )
+
+    # تأكد من وجود مجلد 'instance'
+    instance_path = os.path.join(app.instance_path)
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
 
     # تهيئة الإضافات
     db.init_app(app)
@@ -35,15 +41,17 @@ def create_app():
                             ReturnItem, PurchaseInvoice, PurchaseItem, 
                             Notification, ActivityLog, AuditLog)
         
-        # إنشاء الجداول إذا لم تكن موجودة (للبيئة التطويرية فقط)
-        if os.environ.get('FLASK_ENV') == 'development':
-            db.create_all()
+        # إنشاء الجداول إذا لم تكن موجودة
+        db.create_all()
 
         # تسجيل البلوبرينتات
         from views import main_blueprint
         app.register_blueprint(main_blueprint)
 
     return app
+
+app = create_app()
+
 from cache import cached
 from datetime import datetime, timedelta, time
 from excel_export import ExcelExporter
@@ -63,20 +71,7 @@ import re
 import json
 # تم إزالة استيرادات المساعد الذكي
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
-csrf = CSRFProtect(app)
-CORS(app)  # تفعيل CORS للسماح بالاتصال من المتصفح
-# Ensure JSON responses keep Arabic characters (no ASCII escaping)
-app.config['JSON_AS_ASCII'] = False
 
-# تم إزالة المساعد الذكي
-
-
-
-# تم إزالة جميع مسارات المساعد الذكي
-
-
-# تم إزالة دوال المساعد الذكي
 
 
 # دوال مساعدة لتسجيل الأنشطة
@@ -116,88 +111,7 @@ def create_notification(user_id, notification_type, title, message, product_id=N
 
 
 
-# محاولة استيراد الإعدادات، وإذا فشلت استخدم الإعدادات الافتراضية
-try:
-    from config import config, MESSAGES
-    env_name = os.environ.get('APP_ENV', 'development')
-    app.config.from_object(config.get(env_name, config['development']))
-except ImportError:
-    # الإعدادات الافتراضية إذا لم يكن ملف config.py موجود
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///instance/phone_store.db')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# إنشاء مجلد instance إذا لم يكن موجوداً
-os.makedirs('instance', exist_ok=True)
-os.makedirs('uploads', exist_ok=True)
-
-# إعداد مجلد الرفع
-app.config['UPLOAD_FOLDER'] = 'uploads'
-
-# تهيئة قاعدة البيانات
-init_database(app)
-
-# محاولة إنشاء الجداول تلقائياً في الإنتاج
-if os.environ.get('APP_ENV') == 'production':
-    try:
-        with app.app_context():
-            # تم التعامل مع إنشاء الجداول بواسطة init_database(app)
-            print("✅ تم إنشاء قاعدة البيانات تلقائياً")
-    except Exception as e:
-        print(f"⚠️ تحذير: لم يتم إنشاء قاعدة البيانات تلقائياً - {e}")
-        print("💡 يمكن إنشاؤها يدوياً عبر /init_database")
-
-# معالج الأخطاء للإنتاج
-@app.errorhandler(500)
-def internal_error(error):
-    try:
-        db.session.rollback()
-    except Exception:
-        pass
-    
-    # في بيئة التطوير، اعرض تفاصيل الخطأ
-    if app.debug or os.environ.get('APP_ENV') == 'development':
-        return f"<h1>خطأ داخلي في الخادم</h1><pre>{str(error)}</pre>", 500
-    
-    return render_template('500.html'), 500
-
-@app.errorhandler(404)
-def not_found_error(error):
-    return render_template('404.html'), 404
-
-# ==================== فلاتر Jinja2 ====================
-@app.template_filter('english_numbers')
-def english_numbers(value):
-    """تحويل الأرقام الهندية العربية إلى أرقام إنجليزية"""
-    try:
-        s = str(value)
-        return s.translate(str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789'))
-    except Exception:
-        return str(value)
-
-@app.template_filter('currency')
-def currency(value):
-    """تنسيق العملة مع الفاصلة العشرية والرمز"""
-    try:
-        num = float(value or 0)
-    except (ValueError, TypeError):
-        num = 0.0
-    symbol = 'د.ج'
-    try:
-        settings = StoreSettings.query.first()
-        if settings and getattr(settings, 'currency_symbol', None):
-            symbol = settings.currency_symbol
-    except Exception:
-        pass
-    return f"{num:,.2f} {symbol}"
-
-# جلسات للمصادقة
-
-
-@app.route('/test_urls')
-def test_urls():
-    try:
-        add_product_url = url_for('add_product')
         edit_product_url = url_for('edit_product', product_id=1) # product_id is required for edit_product
         return f"Add Product URL: {add_product_url}<br>Edit Product URL: {edit_product_url}"
     except Exception as e:
@@ -606,8 +520,10 @@ def check_and_create_low_stock_notifications():
 
         for product in low_stock_products:
             # التحقق إذا كان هناك إشعار مكرر غير مقروء
+            settings = StoreSettings.query.first()
+            notification_user_id = settings.notification_user_id if settings else 1
             existing_notification = Notification.query.filter_by(
-                user_id=1,  # للإشعارات العامة، نستخدم user_id=1
+                user_id=notification_user_id,  # للإشعارات العامة، نستخدم user_id=1
                 type='low_stock',
                 product_id=product.id,
                 read=False
@@ -615,7 +531,7 @@ def check_and_create_low_stock_notifications():
 
             if not existing_notification:
                 notification = Notification(
-                    user_id=1,  # للإشعارات العامة
+                    user_id=notification_user_id,  # للإشعارات العامة
                     type='low_stock',
                     title=f'منتج منخفض المخزون: {product.name}',
                     message=f'الكمية المتوفرة: {product.quantity} الحد الأدنى: {product.min_quantity}',
@@ -1067,14 +983,23 @@ def bot_search():
 
 def add_product():
     form = ProductForm()
-    if form.validate_on_submit():
-        new_product = Product(name=form.name.data, brand=form.brand.data, model=form.model.data, color=form.color.data,
-                              description=form.description.data, price_buy=form.price_buy.data, price_sell=form.price_sell.data,
-                              quantity=form.quantity.data, min_quantity=form.min_quantity.data, barcode=form.barcode.data,
-                              imei=form.imei.data, warranty_period=form.warranty_period.data,
-                              category_id=form.category_id.data, supplier_id=form.supplier_id.data)
-        db.session.add(new_product)
-        db.session.commit()
+    categories = Category.query.all()
+    brands = Brand.query.all()
+    suppliers = Supplier.query.all()
+    form.category_id.choices = [(c.id, c.name) for c in categories]
+    form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+
+    if request.method == 'POST':
+        form.category_id.choices = [(c.id, c.name) for c in categories]
+        form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+        if form.validate_on_submit():
+            new_product = Product(name=form.name.data, brand=form.brand.data, model=form.model.data, color=form.color.data,
+                                  description=form.description.data, price_buy=form.price_buy.data, price_sell=form.price_sell.data,
+                                  quantity=form.quantity.data, min_quantity=form.min_quantity.data, barcode=form.barcode.data,
+                                  imei=form.imei.data, warranty_period=form.warranty_period.data,
+                                  category_id=form.category_id.data, supplier_id=form.supplier_id.data)
+            db.session.add(new_product)
+            db.session.commit()
         
         # تسجيل النشاط
         log_activity('create', 'product', new_product.id, f'تم إضافة منتج جديد: {new_product.name}')
@@ -1083,12 +1008,6 @@ def add_product():
         return redirect(url_for('products'))
     elif request.method == 'POST':
         flash('Form validation failed. Please check your inputs.', 'danger')
-
-    categories = Category.query.all()
-    brands = Brand.query.all()
-    suppliers = Supplier.query.all()
-    form.category_id.choices = [(c.id, c.name) for c in categories]
-    form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
     return render_template('add_product.html', form=form, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
@@ -1096,32 +1015,35 @@ def add_product():
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
-    if form.validate_on_submit():
-        product.name = form.name.data
-        product.brand = form.brand.data
-        product.model = form.model.data
-        product.color = form.color.data
-        product.description = form.description.data
-        product.price_buy = form.price_buy.data
-        product.price_sell = form.price_sell.data
-        product.quantity = form.quantity.data
-        product.min_quantity = form.min_quantity.data
-        product.barcode = form.barcode.data
-        product.imei = form.imei.data
-        product.warranty_period = form.warranty_period.data
-        product.category_id = form.category_id.data
-        product.supplier_id = form.supplier_id.data
-        db.session.commit()
-        flash('Product updated successfully!', 'success')
-        return redirect(url_for('products'))
-    elif request.method == 'POST':
-        flash('Form validation failed. Please check your inputs.', 'danger')
-
     categories = Category.query.all()
     brands = Brand.query.all()
     suppliers = Supplier.query.all()
     form.category_id.choices = [(c.id, c.name) for c in categories]
     form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+
+    if request.method == 'POST':
+        form.category_id.choices = [(c.id, c.name) for c in categories]
+        form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+        if form.validate_on_submit():
+            product.name = form.name.data
+            product.brand = form.brand.data
+            product.model = form.model.data
+            product.color = form.color.data
+            product.description = form.description.data
+            product.price_buy = form.price_buy.data
+            product.price_sell = form.price_sell.data
+            product.quantity = form.quantity.data
+            product.min_quantity = form.min_quantity.data
+            product.barcode = form.barcode.data
+            product.imei = form.imei.data
+            product.warranty_period = form.warranty_period.data
+            product.category_id = form.category_id.data
+            product.supplier_id = form.supplier_id.data
+            db.session.commit()
+        flash('Product updated successfully!', 'success')
+        return redirect(url_for('products'))
+    elif request.method == 'POST':
+        flash('Form validation failed. Please check your inputs.', 'danger')
     return render_template('edit_product.html', form=form, product=product, categories=categories, brands=brands, suppliers=suppliers)
 
 @app.route('/products/delete/<int:product_id>', methods=['POST'])

@@ -222,6 +222,8 @@
 {% block scripts %}
 {{ super() }}
 <script>
+    var allProducts = {{ products | tojson }};
+
     $(document).ready(function () {
         // Add new return item row
         $(document).on('click', '.add-item-btn', function () {
@@ -230,9 +232,7 @@
                     <div class="col-md-5">
                         <select class="form-select product-select" name="product_id[]" required>
                             <option value="">اختر منتج</option>
-                            {% for product in products %}
-                            <option value="{{ product.id }}">{{ product.name }}</option>
-                            {% endfor %}
+                            ${allProducts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -349,7 +349,7 @@
                         <div class="row mb-2 align-items-center">
                             <div class="col-md-5">
                                 <select class="form-select product-select" name="product_id[]" required>
-                                    <option value="${it.product_id}" selected>${it.product_name}</option>
+                                    ${allProducts.map(p => `<option value="${p.id}" ${it.product_id == p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
                                 </select>
                                 <div class="form-text">المسموح: ${it.allowed_qty} من ${it.sold_qty} (تم إرجاع ${it.already_returned})</div>
                             </div>
