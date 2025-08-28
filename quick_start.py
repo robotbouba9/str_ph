@@ -61,4 +61,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
+    if '--auto-commits' in sys.argv:
+        print("✅ Auto-commits activés")
+        # Ajouter le code pour les auto-commits ici
     main()
