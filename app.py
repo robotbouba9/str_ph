@@ -22,7 +22,7 @@ from database import (
 
 def create_app():
     """تطبيق Flask لإدارة مخزون محل الهواتف"""
-    app = Flask(__name__, static_folder=\'static\', static_url_path=\'/static\')
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
     
     # التهيئة الأساسية
     app.config.from_mapping(
